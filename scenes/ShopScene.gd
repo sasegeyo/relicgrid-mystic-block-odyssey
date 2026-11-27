@@ -120,6 +120,27 @@ func _rebuild_shop() -> void:
 	boost_row.add_child(_make_booster_card("bomb", "💣", "BOMBA"))
 	content_vb.add_child(boost_row)
 
+	# Ödüllü reklamla ücretsiz güçlendirici (günde sınırlı)
+	var ads_left: int = AdManager.get_shop_rewarded_left()
+	var free_btn := ThemeManager.make_button(
+		("🎬 REKLAM İZLE · ÜCRETSİZ GÜÇLENDİRİCİ  (%d/%d)" % [ads_left, AdManager.DAILY_SHOP_REWARDED_LIMIT]) if ads_left > 0 else "🎬 BUGÜNLÜK BİTTİ · YARIN GEL",
+		17, "emerald" if ads_left > 0 else "stone"
+	)
+	free_btn.custom_minimum_size = Vector2(0, 58)
+	free_btn.disabled = ads_left <= 0
+	free_btn.pressed.connect(func() -> void:
+		free_btn.disabled = true
+		AdManager.show_rewarded("shop_booster", func(completed: bool) -> void:
+			if completed:
+				AdManager.consume_shop_rewarded()
+				if GameState.grant_lowest_booster(9) == "":
+					GameState.add_coins(50, true) # Hepsi tavandaysa altın ver
+				AudioManager.play_purchase()
+			_rebuild_shop.call_deferred()
+		)
+	)
+	content_vb.add_child(free_btn)
+
 	# 4) TEMALAR
 	content_vb.add_child(ThemeManager.make_label("TEMALAR", 18, "text_dim"))
 

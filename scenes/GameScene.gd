@@ -22,6 +22,7 @@ var _rewarded_score: int = 0
 var _next_booster_score: int = 1500
 var _run_initial_best: int = 0
 var _new_best_announced: bool = false
+var _record_zone_active: bool = false
 var _stuck_offer_active: bool = false
 
 var grid_board: GridBoard
@@ -333,6 +334,7 @@ func _start_configured_level(clear_save: bool = true) -> void:
 	_btn_give_up.visible = false
 	_next_booster_score = 1500
 	_new_best_announced = false
+	_record_zone_active = false
 	_hide_modal()
 
 	match GameState.active_mode:
@@ -424,6 +426,8 @@ func _try_resume_saved_run() -> bool:
 	_revive_used = bool(data.get("revive_used", false))
 	_rewarded_score = clampi(int(data.get("rewarded_score", 0)), 0, current_score)
 	_new_best_announced = (_run_initial_best > 0 and current_score > _run_initial_best)
+	_record_zone_active = _run_initial_best >= 300 and current_score >= int(_run_initial_best * 0.85)
+	piece_tray.record_zone = _record_zone_active
 
 	var occ: Variant = data.get("occupied_cells", [])
 	if typeof(occ) == TYPE_ARRAY:
@@ -654,6 +658,14 @@ func _add_score(delta_pts: int) -> void:
 	current_score += delta_pts
 	piece_tray.current_score_hint = current_score
 
+	# Rekor Bölgesi: rekorun %85'ine gelince açıkça duyurulur ve parçalar zorlaşır
+	if not _record_zone_active and _run_initial_best >= 300 and current_score >= int(_run_initial_best * 0.85):
+		_record_zone_active = true
+		piece_tray.record_zone = true
+		AudioManager.play_booster()
+		show_combo_popup("REKOR BÖLGESİ!", Color("#F59E0B"))
+		show_status("Parçalar zorlaştı · Rekora %d puan" % maxi(0, _run_initial_best - current_score), Color("#FDE68A"))
+
 	# İlk kez Best Score geçildiğinde oyun başına 1 kez bildirim + ses
 	if not _new_best_announced and _run_initial_best > 0 and current_score > _run_initial_best:
 		_new_best_announced = true
@@ -664,6 +676,28 @@ func _add_score(delta_pts: int) -> void:
 	while current_score >= _next_booster_score:
 		_next_booster_score += 1500
 		_grant_booster_reward()
+
+
+## Oyun sonu ekranına "Reklam izle, altını 2'ye katla" butonu ekler (oyun başına 1 kez).
+func _add_double_coins_button(coin_amount: int) -> void:
+	if coin_amount <= 0:
+		return
+	var dbl_btn := ThemeManager.make_button("🎬 2X ALTIN  (+%d 🪙)" % coin_amount, 19, "emerald")
+	dbl_btn.custom_minimum_size = Vector2(0, 54)
+	dbl_btn.pressed.connect(func() -> void:
+		dbl_btn.disabled = true
+		AdManager.show_rewarded("double_coins", func(completed: bool) -> void:
+			if not completed:
+				if is_instance_valid(dbl_btn):
+					dbl_btn.disabled = false
+				return
+			GameState.add_coins(coin_amount, true)
+			AudioManager.play_purchase()
+			if is_instance_valid(dbl_btn):
+				dbl_btn.text = "✓ +%d 🪙 ALINDI" % coin_amount
+		)
+	)
+	_modal_box.add_child(dbl_btn)
 
 
 func _grant_booster_reward() -> void:
@@ -845,6 +879,7 @@ func _trigger_stage_clear() -> void:
 		"+%d 🪙   ·   +%d LP   ·   +%d XP" % [int(reward_info.get("coin_gain", 30)), int(reward_info.get("league_gain", 50)), xp_gain],
 		20, Color("#34D399"), true
 	))
+	_add_double_coins_button(int(reward_info.get("coin_gain", 0)))
 
 	if GameState.active_mode == GameState.PlayMode.DAILY_MOSAIC:
 		_modal_box.add_child(ThemeManager.make_label("%d🔥 SERİ" % GameState.daily_streak, 22, "gold_light", true))
@@ -859,9 +894,11 @@ func _trigger_stage_clear() -> void:
 		next_btn.custom_minimum_size = Vector2(0, 60)
 		next_btn.pressed.connect(func() -> void:
 			AudioManager.play_pickup()
-			GameState.selected_stage = next_stage
-			GameState.campaign_page = int((next_stage - 1) / 20)
-			_start_configured_level(true)
+			AdManager.on_game_end_continue(func() -> void:
+				GameState.selected_stage = next_stage
+				GameState.campaign_page = int((next_stage - 1) / 20)
+				_start_configured_level(true)
+			)
 		)
 		_modal_box.add_child(next_btn)
 
@@ -869,7 +906,7 @@ func _trigger_stage_clear() -> void:
 	replay_btn.custom_minimum_size = Vector2(0, 52)
 	replay_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		_start_configured_level(true)
+		AdManager.on_game_end_continue(func() -> void: _start_configured_level(true))
 	)
 	_modal_box.add_child(replay_btn)
 
@@ -877,7 +914,7 @@ func _trigger_stage_clear() -> void:
 	menu_btn.custom_minimum_size = Vector2(0, 50)
 	menu_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		AdManager.on_game_end_continue(func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 	)
 	_modal_box.add_child(menu_btn)
 
@@ -913,6 +950,12 @@ func _trigger_game_over() -> void:
 	_modal_box.add_child(ThemeManager.make_label("%d" % current_score, 40, "text_main", true))
 	_modal_box.add_child(ThemeManager.make_label("+%d 🪙   ·   +%d LP   ·   +%d XP" % [coin_gain, lp_gain, xp_gain], 20, Color("#34D399"), true))
 
+	# Rekora ne kadar kaldığını göster (revive için en güçlü motivasyon)
+	var best_now: int = _run_initial_best
+	if not new_record and best_now > 0 and current_score < best_now:
+		_modal_box.add_child(ThemeManager.make_label("REKORA %d PUAN KALDI!" % (best_now - current_score), 22, "gold_light", true))
+	_add_double_coins_button(coin_gain)
+
 	# Tek Seferlik İkinci Şans (Revive): SADECE ödüllü reklamla. Altınla veya
 	# NO ADS/VIP ile ücretsiz alınamaz.
 	if not _revive_used:
@@ -933,7 +976,7 @@ func _trigger_game_over() -> void:
 	retry_btn.custom_minimum_size = Vector2(0, 56)
 	retry_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		_start_configured_level(true)
+		AdManager.on_game_end_continue(func() -> void: _start_configured_level(true))
 	)
 	_modal_box.add_child(retry_btn)
 
@@ -941,7 +984,7 @@ func _trigger_game_over() -> void:
 	menu_btn.custom_minimum_size = Vector2(0, 50)
 	menu_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		AdManager.on_game_end_continue(func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 	)
 	_modal_box.add_child(menu_btn)
 

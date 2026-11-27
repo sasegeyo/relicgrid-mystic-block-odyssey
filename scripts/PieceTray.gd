@@ -24,6 +24,8 @@ var current_score_hint: int = 0
 var jokers_used: int = 0
 var rescues_used: int = 0
 var rotate_mode_active: bool = false
+## Rekor Bölgesi: oyuncuya ekranda duyurulur; büyük parçalar açılır ve sığma yardımı kalkar.
+var record_zone: bool = false
 
 var _rng := RandomNumberGenerator.new()
 var _max_shape_tier: int = 2
@@ -80,6 +82,7 @@ func setup_tray(board: GridBoard, seed_val: int, max_tier: int, is_special: bool
 	jokers_used = 0
 	rescues_used = 0
 	rotate_mode_active = false
+	record_zone = false
 	_dragging_slot = -1
 	_return_anim_slot = -1
 	_interaction_locked = false
@@ -155,8 +158,9 @@ func can_any_rotation_fit() -> bool:
 func refill_tray(guarantee_fit: bool = false) -> void:
 	var all_shapes: Array[Dictionary] = PieceLibrary.get_all_shapes()
 	var tier_filtered: Array[Dictionary] = []
+	var tier_cap: int = 2 if record_zone else _max_shape_tier
 	for sh in all_shapes:
-		if int(sh["tier"]) <= _max_shape_tier:
+		if int(sh["tier"]) <= tier_cap:
 			tier_filtered.append(sh)
 	if tier_filtered.is_empty():
 		tier_filtered = all_shapes
@@ -177,7 +181,8 @@ func refill_tray(guarantee_fit: bool = false) -> void:
 
 	# Sadece tahta henüz çok dolmamışken (< %72) 1 sığan parça yardımı ver;
 	# %72 üstünde tamamen doğal çekiliş yap ki oyuncu sıkıştığında gerçekten kaybedebilsin.
-	var guaranteed_slot: int = _rng.randi_range(0, SLOT_COUNT - 1) if (occupancy < 0.72 or guarantee_fit) else -1
+	var helps: bool = guarantee_fit or (occupancy < 0.72 and not record_zone)
+	var guaranteed_slot: int = _rng.randi_range(0, SLOT_COUNT - 1) if helps else -1
 	if guarantee_fit and grid_board != null and fittable.is_empty():
 		fittable = grid_board.get_fittable_shapes(all_shapes)
 		if fittable.is_empty():
@@ -213,6 +218,8 @@ func _pick_weighted_shape(pool: Array[Dictionary], occupancy: float, dda_t: floa
 	for sh in pool:
 		var w: float = float(maxi(1, int(sh.get("weight", 5))))
 		var tier: int = int(sh.get("tier", 0))
+		if record_zone and tier == 2:
+			w *= 1.6
 		if occupancy >= 0.50:
 			if tier == 0:
 				w *= 2.1
