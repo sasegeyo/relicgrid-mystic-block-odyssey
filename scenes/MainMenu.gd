@@ -123,9 +123,11 @@ func _rebuild_menu() -> void:
 	btn_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	btn_box.add_theme_constant_override("separation", 12)
 
-	if BoardSaveManager.has_saved_run():
-		var saved: Dictionary = BoardSaveManager.load_run()
-		if not saved.is_empty():
+	var saved: Dictionary = BoardSaveManager.get_latest_run()
+	if not saved.is_empty():
+		var is_stale_daily: bool = int(saved.get("mode", -1)) == GameState.PlayMode.DAILY_MOSAIC \
+			and str(saved.get("day_key", "")) != GameState.get_today_key()
+		if not is_stale_daily:
 			var btn_resume := ThemeManager.make_button("▶  DEVAM ET  (%d)" % int(saved.get("score", 0)), 22, "emerald")
 			btn_resume.custom_minimum_size = Vector2(0, 64)
 			btn_resume.pressed.connect(func() -> void:
@@ -170,6 +172,18 @@ func _rebuild_menu() -> void:
 		get_tree().change_scene_to_file("res://scenes/WeeklyCohort.tscn")
 	)
 	btn_box.add_child(btn_league)
+
+	var claimable: int = BattlePass.get_claimable_count()
+	var pass_txt: String = "🎖  SEZON  ·  KADEME %d" % BattlePass.get_tier()
+	if claimable > 0:
+		pass_txt += "  (%d ödül!)" % claimable
+	var btn_pass := ThemeManager.make_button(pass_txt, 22, "gold" if claimable > 0 else "stone")
+	btn_pass.custom_minimum_size = Vector2(0, 68)
+	btn_pass.pressed.connect(func() -> void:
+		AudioManager.play_sfx("ui_click")
+		get_tree().change_scene_to_file("res://scenes/BattlePassScene.tscn")
+	)
+	btn_box.add_child(btn_pass)
 	main_vbox.add_child(btn_box)
 
 	# 6) REKLAM YER TUTUCU (NO ADS alındığında kalıcı olarak gizlenir)

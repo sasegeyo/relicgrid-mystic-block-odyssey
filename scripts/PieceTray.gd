@@ -150,7 +150,9 @@ func can_any_rotation_fit() -> bool:
 
 
 ## DDA (300 -> 6000) + Akıllı Parça Üreteci (%50 küçük, %70 1x1, %85 Joker maks. 3)
-func refill_tray() -> void:
+## guarantee_fit: true ise (ör. Revive sonrası) tahta ne kadar dolu olursa olsun
+## en az bir parçanın sığması garanti edilir.
+func refill_tray(guarantee_fit: bool = false) -> void:
 	var all_shapes: Array[Dictionary] = PieceLibrary.get_all_shapes()
 	var tier_filtered: Array[Dictionary] = []
 	for sh in all_shapes:
@@ -175,7 +177,11 @@ func refill_tray() -> void:
 
 	# Sadece tahta henüz çok dolmamışken (< %72) 1 sığan parça yardımı ver;
 	# %72 üstünde tamamen doğal çekiliş yap ki oyuncu sıkıştığında gerçekten kaybedebilsin.
-	var guaranteed_slot: int = _rng.randi_range(0, SLOT_COUNT - 1) if occupancy < 0.72 else -1
+	var guaranteed_slot: int = _rng.randi_range(0, SLOT_COUNT - 1) if (occupancy < 0.72 or guarantee_fit) else -1
+	if guarantee_fit and grid_board != null and fittable.is_empty():
+		fittable = grid_board.get_fittable_shapes(all_shapes)
+		if fittable.is_empty():
+			fittable = [PieceLibrary.get_shape_by_id("mono_1")]
 
 	for i in range(SLOT_COUNT):
 		var chosen_shape: Dictionary

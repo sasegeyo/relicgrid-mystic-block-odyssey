@@ -88,7 +88,7 @@ func _rebuild_shop() -> void:
 	na_vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	na_vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	na_vb.add_child(ThemeManager.make_label("NO ADS", 26, "gold_light"))
-	na_vb.add_child(ThemeManager.make_label("∞ DEVAM", 15, "text_dim"))
+	na_vb.add_child(ThemeManager.make_label("Banner reklam yok", 15, "text_dim"))
 	na_hb.add_child(na_vb)
 
 	if GameState.no_ads:

@@ -323,7 +323,7 @@ func _build_layout() -> void:
 
 func _start_configured_level(clear_save: bool = true) -> void:
 	if clear_save:
-		BoardSaveManager.clear_saved_run()
+		BoardSaveManager.clear_saved_run(int(GameState.active_mode))
 
 	session_ended = false
 	is_paused = false
@@ -400,9 +400,9 @@ func save_current_progress() -> void:
 
 
 func _try_resume_saved_run() -> bool:
-	if not BoardSaveManager.has_saved_run():
+	if not BoardSaveManager.has_saved_run(int(GameState.active_mode)):
 		return false
-	var data: Dictionary = BoardSaveManager.load_run()
+	var data: Dictionary = BoardSaveManager.load_run(int(GameState.active_mode))
 	if data.is_empty():
 		return false
 	var saved_mode: int = int(data.get("mode", -1))
@@ -815,7 +815,7 @@ func _compute_earned_stars() -> int:
 
 func _trigger_stage_clear() -> void:
 	session_ended = true
-	BoardSaveManager.clear_saved_run()
+	BoardSaveManager.clear_saved_run(int(GameState.active_mode))
 	grid_board.set_booster_targeting("")
 	piece_tray.set_rotate_targeting(false)
 	piece_tray.set_interaction_locked(true)
@@ -828,6 +828,12 @@ func _trigger_stage_clear() -> void:
 	elif GameState.active_mode == GameState.PlayMode.DAILY_MOSAIC:
 		reward_info = GameState.record_daily_victory(current_score)
 
+	# Battle Pass XP (bugün zaten bitirilmiş günlük tekrar oynanınca zafer bonusu yok)
+	var first_daily: bool = bool(reward_info.get("first_clear_today", false))
+	var counts_as_win: bool = GameState.active_mode == GameState.PlayMode.CAMPAIGN or first_daily
+	var xp_gain: int = BattlePass.award_game_xp(current_score - _rewarded_score, counts_as_win, stars, first_daily)
+	_rewarded_score = current_score
+
 	_clear_modal_children()
 	_modal_backdrop.visible = true
 
@@ -836,7 +842,7 @@ func _trigger_stage_clear() -> void:
 	_modal_box.add_child(ThemeManager.make_label(star_str, 44, "gold_light", true))
 	_modal_box.add_child(ThemeManager.make_label("%d" % current_score, 36, "text_main", true))
 	_modal_box.add_child(ThemeManager.make_label(
-		"+%d 🪙   ·   +%d LP" % [int(reward_info.get("coin_gain", 30)), int(reward_info.get("league_gain", 50))],
+		"+%d 🪙   ·   +%d LP   ·   +%d XP" % [int(reward_info.get("coin_gain", 30)), int(reward_info.get("league_gain", 50)), xp_gain],
 		20, Color("#34D399"), true
 	))
 
@@ -880,7 +886,7 @@ func _trigger_game_over() -> void:
 	session_ended = true
 	_stuck_offer_active = false
 	_btn_give_up.visible = false
-	BoardSaveManager.clear_saved_run()
+	BoardSaveManager.clear_saved_run(int(GameState.active_mode))
 	grid_board.set_booster_targeting("")
 	piece_tray.set_rotate_targeting(false)
 	piece_tray.set_interaction_locked(true)
@@ -893,6 +899,7 @@ func _trigger_game_over() -> void:
 		res = GameState.record_endless_run(current_score, true, _rewarded_score)
 	else:
 		res = GameState.record_failed_attempt_points(current_score, _rewarded_score)
+	var xp_gain: int = BattlePass.award_game_xp(current_score - _rewarded_score, false)
 	_rewarded_score = current_score
 
 	var lp_gain: int = int(res.get("league_gain", 0))
@@ -904,14 +911,22 @@ func _trigger_game_over() -> void:
 
 	_modal_box.add_child(ThemeManager.make_label("YENİ REKOR! ✨" if new_record else "HAMLE YOK", 32, "gold_light" if new_record else Color("#FCA5A5"), true))
 	_modal_box.add_child(ThemeManager.make_label("%d" % current_score, 40, "text_main", true))
-	_modal_box.add_child(ThemeManager.make_label("+%d 🪙   ·   +%d LP" % [coin_gain, lp_gain], 20, Color("#34D399"), true))
+	_modal_box.add_child(ThemeManager.make_label("+%d 🪙   ·   +%d LP   ·   +%d XP" % [coin_gain, lp_gain, xp_gain], 20, Color("#34D399"), true))
 
-	# Tek Seferlik İkinci Şans (Revive)
+	# Tek Seferlik İkinci Şans (Revive): SADECE ödüllü reklamla. Altınla veya
+	# NO ADS/VIP ile ücretsiz alınamaz.
 	if not _revive_used:
-		var revive_txt: String = "⚡ ÜCRETSİZ DEVAM ET" if GameState.no_ads else "🎬 REKLAM İZLE & DEVAM ET"
-		var revive_btn := ThemeManager.make_button(revive_txt, 20, "emerald" if GameState.no_ads else "amber_solid")
+		var revive_btn := ThemeManager.make_button("🎬 REKLAM İZLE & DEVAM ET", 20, "amber_solid")
 		revive_btn.custom_minimum_size = Vector2(0, 60)
-		revive_btn.pressed.connect(revive_game)
+		revive_btn.pressed.connect(func() -> void:
+			revive_btn.disabled = true
+			AdManager.show_rewarded("revive", func(completed: bool) -> void:
+				if completed:
+					revive_game()
+				elif is_instance_valid(revive_btn):
+					revive_btn.disabled = false
+			)
+		)
 		_modal_box.add_child(revive_btn)
 
 	var retry_btn := ThemeManager.make_button("↻ TEKRAR", 20, "gold")
@@ -941,7 +956,7 @@ func revive_game() -> void:
 	_hide_modal()
 	grid_board.clear_center_area(1)
 	piece_tray.set_interaction_locked(false)
-	piece_tray.refill_tray()
+	piece_tray.refill_tray(true)
 	save_current_progress()
 
 
