@@ -1,0 +1,38 @@
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="pursh game"
+config/description="Taktiksel mistik blok bulmaca oyunu: değişken ızgara mimarileri, dinamik engeller, 500 bölümlük kampanya, günlük mozaik serisi ve haftalık kohort ligleri."
+run/main_scene="res://scenes/MainMenu.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+GameState="*res://autoload/GameState.gd"
+ThemeManager="*res://autoload/ThemeManager.gd"
+SoundManager="*res://autoload/SoundManager.gd"
+AudioFeedbackManager="*res://autoload/AudioFeedbackManager.gd"
+JuicyEffectsManager="*res://autoload/JuicyEffectsManager.gd"
+BoardSaveManager="*res://autoload/BoardSaveManager.gd"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/size/window_width_override=540
+window/size/window_height_override=960
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_2d=1
+environment/defaults/default_clear_color=Color(0.0352941, 0.0784314, 0.0627451, 1)

@@ -1,0 +1,6 @@
+{
+  "name": "RelicGrid: Mystic Block Odyssey",
+  "description": "Tactical block puzzle game featuring dynamic obstacle blocks, variable grid architectures, daily mosaic streaks, 500-stage campaign, and weekly cohorts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
