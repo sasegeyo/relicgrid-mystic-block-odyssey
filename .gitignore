@@ -1,3 +1,4 @@
+# Existing rules
 node_modules/
 build/
 dist/
@@ -6,3 +7,9 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Godot 4
+.godot/
+export_presets.cfg
+*.tmp
+android/build/

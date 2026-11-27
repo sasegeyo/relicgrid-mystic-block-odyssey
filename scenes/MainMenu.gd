@@ -70,15 +70,15 @@ func _rebuild_menu() -> void:
 	var shop_btn := ThemeManager.make_button("🛒 PAZAR", 18, "amber_solid")
 	shop_btn.custom_minimum_size = Vector2(146, 50)
 	shop_btn.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		get_tree().change_scene_to_file("res://scenes/ShopScene.tscn")
 	)
 	top_bar.add_child(shop_btn)
 
-	_sound_btn = ThemeManager.make_button("✕" if AudioFeedbackManager.sound_muted else "♪", 22, "stone")
+	_sound_btn = ThemeManager.make_button("✕" if AudioManager.sound_muted else "♪", 22, "stone")
 	_sound_btn.custom_minimum_size = Vector2(56, 50)
 	_sound_btn.pressed.connect(func() -> void:
-		var on: bool = AudioFeedbackManager.toggle_sound()
+		var on: bool = AudioManager.toggle_sound()
 		_sound_btn.text = "♪" if on else "✕"
 	)
 	top_bar.add_child(_sound_btn)
@@ -129,7 +129,7 @@ func _rebuild_menu() -> void:
 			var btn_resume := ThemeManager.make_button("▶  DEVAM ET  (%d)" % int(saved.get("score", 0)), 22, "emerald")
 			btn_resume.custom_minimum_size = Vector2(0, 64)
 			btn_resume.pressed.connect(func() -> void:
-				AudioFeedbackManager.play_pickup()
+				AudioManager.play_pickup()
 				GameState.active_mode = int(saved.get("mode", 0)) as GameState.PlayMode
 				GameState.selected_stage = maxi(1, int(saved.get("stage", 1)))
 				get_tree().change_scene_to_file("res://scenes/GameScene.tscn")
@@ -139,7 +139,7 @@ func _rebuild_menu() -> void:
 	var btn_camp := ThemeManager.make_button("⚔  KAMPANYA  #%d" % GameState.unlocked_stage, 24, "gold")
 	btn_camp.custom_minimum_size = Vector2(0, 76)
 	btn_camp.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		GameState.campaign_page = int((GameState.unlocked_stage - 1) / 20)
 		get_tree().change_scene_to_file("res://scenes/CampaignMap.tscn")
 	)
@@ -149,7 +149,7 @@ func _rebuild_menu() -> void:
 	var btn_daily := ThemeManager.make_button("☀  GÜNLÜK" + ("  ✓" if daily_done else ""), 22, "amber_solid")
 	btn_daily.custom_minimum_size = Vector2(0, 68)
 	btn_daily.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		GameState.active_mode = GameState.PlayMode.DAILY_MOSAIC
 		get_tree().change_scene_to_file("res://scenes/GameScene.tscn")
 	)
@@ -158,7 +158,7 @@ func _rebuild_menu() -> void:
 	var btn_endless := ThemeManager.make_button("∞  SONSUZ", 22, "emerald")
 	btn_endless.custom_minimum_size = Vector2(0, 68)
 	btn_endless.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		_endless_modal.visible = true
 	)
 	btn_box.add_child(btn_endless)
@@ -166,7 +166,7 @@ func _rebuild_menu() -> void:
 	var btn_league := ThemeManager.make_button("🏆  LİG", 22, "purple")
 	btn_league.custom_minimum_size = Vector2(0, 68)
 	btn_league.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		get_tree().change_scene_to_file("res://scenes/WeeklyCohort.tscn")
 	)
 	btn_box.add_child(btn_league)
@@ -177,7 +177,7 @@ func _rebuild_menu() -> void:
 		var ad_bar := ThemeManager.make_button("AD  ·  🚫 NO ADS", 14, "stone", 10)
 		ad_bar.custom_minimum_size = Vector2(0, 40)
 		ad_bar.pressed.connect(func() -> void:
-			SoundManager.play_sfx("ui_click")
+			AudioManager.play_sfx("ui_click")
 			get_tree().change_scene_to_file("res://scenes/ShopScene.tscn")
 		)
 		main_vbox.add_child(ad_bar)
@@ -210,7 +210,7 @@ func _build_endless_selector_modal() -> void:
 	var close_btn := ThemeManager.make_button("✕", 20, "stone")
 	close_btn.custom_minimum_size = Vector2(50, 48)
 	close_btn.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		_endless_modal.visible = false
 	)
 	header.add_child(close_btn)
@@ -227,7 +227,7 @@ func _build_endless_selector_modal() -> void:
 		GameState.best_normal_endless,
 		"emerald",
 		func() -> void:
-			SoundManager.play_sfx("ui_click")
+			AudioManager.play_sfx("ui_click")
 			GameState.active_mode = GameState.PlayMode.MODE_NORMAL_ENDLESS
 			get_tree().change_scene_to_file("res://scenes/GameScene.tscn")
 	))
@@ -239,7 +239,7 @@ func _build_endless_selector_modal() -> void:
 		GameState.best_special_endless,
 		"amber_solid",
 		func() -> void:
-			SoundManager.play_sfx("ui_click")
+			AudioManager.play_sfx("ui_click")
 			GameState.active_mode = GameState.PlayMode.MODE_SPECIAL_ENDLESS
 			get_tree().change_scene_to_file("res://scenes/GameScene.tscn")
 	))

@@ -35,7 +35,7 @@ func _build_ui() -> void:
 	var back_btn := ThemeManager.make_button("←", 22, "stone")
 	back_btn.custom_minimum_size = Vector2(72, 52)
 	back_btn.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 	)
 	top_bar.add_child(back_btn)
@@ -61,7 +61,7 @@ func _build_ui() -> void:
 		tb.custom_minimum_size = Vector2(0, 48)
 		var cap_i: int = i
 		tb.pressed.connect(func() -> void:
-			SoundManager.play_sfx("ui_click")
+			AudioManager.play_sfx("ui_click")
 			_viewing_tier = cap_i
 			_refresh_standings()
 		)
@@ -95,7 +95,7 @@ func _build_ui() -> void:
 	var play_btn := ThemeManager.make_button("▶ OYNA", 22, "gold")
 	play_btn.custom_minimum_size = Vector2(0, 62)
 	play_btn.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		GameState.active_mode = GameState.PlayMode.CAMPAIGN
 		GameState.selected_stage = GameState.unlocked_stage
 		get_tree().change_scene_to_file("res://scenes/GameScene.tscn")

@@ -1,7 +1,8 @@
 extends Node
-## Ses + Haptic Titreşim yöneticisi.
+## Birleşik Ses ve Haptic Titreşim Yöneticisi (AudioManager).
 ## 8 kanallı AudioStreamPlayer havuzu, user://settings.cfg kalıcı tercihleri,
-## opsiyonel Inspector AudioStream yuvaları ve bellek içi 16-bit mono PCM sentezleyici.
+## opsiyonel Inspector AudioStream yuvaları, prosedürel 16-bit mono PCM sentezleyici
+## ve mobil Input.vibrate_handheld desteği sağlar.
 
 const SETTINGS_PATH: String = "user://settings.cfg"
 const MIX_RATE: int = 22050
@@ -13,6 +14,8 @@ enum HapticStrength {
 	HEAVY = 2
 }
 
+@export var ui_click: AudioStream
+@export var purchase: AudioStream
 @export var pickup: AudioStream
 @export var place: AudioStream
 @export var invalid: AudioStream
@@ -67,7 +70,7 @@ func toggle_sound() -> bool:
 	sound_muted = not sound_muted
 	_save_settings()
 	if not sound_muted:
-		play_pickup()
+		play_ui_click()
 	return not sound_muted
 
 
@@ -91,6 +94,16 @@ func trigger_haptic(strength: int) -> void:
 			Input.vibrate_handheld(28, 0.72)
 		HapticStrength.HEAVY:
 			Input.vibrate_handheld(55, 1.0)
+
+
+func play_ui_click() -> void:
+	_play_stream(ui_click, 1.0, -1.0)
+	trigger_haptic(HapticStrength.LIGHT)
+
+
+func play_purchase() -> void:
+	_play_stream(purchase, 1.0, 1.0)
+	trigger_haptic(HapticStrength.MEDIUM)
 
 
 func play_pickup() -> void:
@@ -156,6 +169,23 @@ func play_game_over() -> void:
 	trigger_haptic(HapticStrength.HEAVY)
 
 
+## İsimle ses çalma uyumluluk yardımcısı (eski play_sfx çağrıları için).
+func play_sfx(sfx_name: String) -> void:
+	match sfx_name:
+		"ui_click": play_ui_click()
+		"purchase", "coin_gain": play_purchase()
+		"pickup": play_pickup()
+		"place": play_place()
+		"cancel", "invalid": play_invalid()
+		"line_clear": play_line_clear(1)
+		"victory", "all_clear": play_all_clear()
+		"obstacle_hit", "ice_crack": play_ice_crack()
+		"obstacle_break", "booster", "booster_hammer", "booster_refresh": play_booster()
+		"booster_bomb", "curse_spread": play_bomb_explode()
+		"game_over": play_game_over()
+		_: play_ui_click()
+
+
 func _play_stream(stream: AudioStream, pitch_scale: float, vol_offset_db: float) -> void:
 	if sound_muted or stream == null:
 		return
@@ -172,6 +202,15 @@ func _play_stream(stream: AudioStream, pitch_scale: float, vol_offset_db: float)
 
 
 func _ensure_procedural_fallbacks() -> void:
+	if ui_click == null:
+		ui_click = _synth_notes([
+			{"f0": 540.0, "f1": 720.0, "dur": 0.055, "wave": "triangle", "vol": 0.35}
+		])
+	if purchase == null:
+		purchase = _synth_notes([
+			{"f0": 659.25, "f1": 783.99, "dur": 0.07, "wave": "chime", "vol": 0.48},
+			{"f0": 987.77, "f1": 1318.51, "dur": 0.16, "wave": "chime", "vol": 0.52}
+		])
 	if pickup == null:
 		pickup = _synth_notes([
 			{"f0": 380.0, "f1": 620.0, "dur": 0.065, "wave": "sine", "vol": 0.42}

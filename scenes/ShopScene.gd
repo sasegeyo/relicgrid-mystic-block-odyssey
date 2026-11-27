@@ -41,7 +41,7 @@ func _rebuild_shop() -> void:
 	var back_btn := ThemeManager.make_button("← GERİ", 18, "stone")
 	back_btn.custom_minimum_size = Vector2(118, 52)
 	back_btn.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		if is_overlay:
 			shop_closed.emit()
 			queue_free()
@@ -101,7 +101,7 @@ func _rebuild_shop() -> void:
 		buy_na.custom_minimum_size = Vector2(150, 56)
 		buy_na.pressed.connect(func() -> void:
 			if GameState.purchase_no_ads():
-				SoundManager.play_sfx("purchase")
+				AudioManager.play_sfx("purchase")
 				_rebuild_shop.call_deferred()
 		)
 		na_hb.add_child(buy_na)
@@ -152,10 +152,10 @@ func _make_booster_card(booster_id: String, icon_str: String, short_name: String
 	buy_btn.disabled = not can_afford
 	buy_btn.pressed.connect(func() -> void:
 		if GameState.buy_booster(booster_id):
-			SoundManager.play_sfx("purchase")
+			AudioManager.play_sfx("purchase")
 			_rebuild_shop.call_deferred()
 		else:
-			SoundManager.play_sfx("cancel")
+			AudioManager.play_sfx("cancel")
 	)
 	vb.add_child(buy_btn)
 	card.add_child(vb)
@@ -200,7 +200,7 @@ func _make_theme_card(theme_id: String) -> PanelContainer:
 		var use_btn := ThemeManager.make_button("KUŞAN", 18, "gold")
 		use_btn.custom_minimum_size = Vector2(146, 50)
 		use_btn.pressed.connect(func() -> void:
-			SoundManager.play_sfx("ui_click")
+			AudioManager.play_sfx("ui_click")
 			ThemeManager.apply_theme(theme_id)
 		)
 		hb.add_child(use_btn)
@@ -211,7 +211,7 @@ func _make_theme_card(theme_id: String) -> PanelContainer:
 		unlock_btn.custom_minimum_size = Vector2(146, 50)
 		unlock_btn.pressed.connect(func() -> void:
 			if GameState.unlock_and_equip_theme(theme_id, cost):
-				SoundManager.play_sfx("purchase")
+				AudioManager.play_sfx("purchase")
 				ThemeManager.apply_theme(theme_id)
 		)
 		hb.add_child(unlock_btn)

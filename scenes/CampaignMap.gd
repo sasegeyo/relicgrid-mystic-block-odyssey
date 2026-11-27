@@ -39,7 +39,7 @@ func _build_ui() -> void:
 	var back_btn := ThemeManager.make_button("←", 22, "stone")
 	back_btn.custom_minimum_size = Vector2(72, 52)
 	back_btn.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 	)
 	top_bar.add_child(back_btn)
@@ -51,7 +51,7 @@ func _build_ui() -> void:
 	var jump_btn := ThemeManager.make_button("▶ #%d" % GameState.unlocked_stage, 19, "amber_solid")
 	jump_btn.custom_minimum_size = Vector2(124, 52)
 	jump_btn.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		_launch_stage(GameState.unlocked_stage)
 	)
 	top_bar.add_child(jump_btn)
@@ -114,7 +114,7 @@ func _set_page(new_idx: int) -> void:
 	var clamped: int = clampi(new_idx, 0, TOTAL_PAGES - 1)
 	if clamped == _page_index:
 		return
-	SoundManager.play_sfx("ui_click")
+	AudioManager.play_sfx("ui_click")
 	_page_index = clamped
 	GameState.campaign_page = _page_index
 	_refresh_page()
@@ -165,7 +165,7 @@ func _create_stage_card(stage_num: int) -> Control:
 
 	btn.add_child(vb)
 	btn.pressed.connect(func() -> void:
-		SoundManager.play_sfx("ui_click")
+		AudioManager.play_sfx("ui_click")
 		_launch_stage(stage_num)
 	)
 	return btn

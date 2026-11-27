@@ -160,6 +160,23 @@ static func get_all_shapes() -> Array[Dictionary]:
 		{"id": "big_l_tl", "tier": 2, "weight": 5, "pts": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(0, 2)]},
 		{"id": "big_l_tr", "tier": 2, "weight": 5, "pts": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(2, 1), Vector2i(2, 2)]},
 		{"id": "plus_5", "tier": 2, "weight": 4, "pts": [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(1, 2)]},
+		{"id": "diag_2_a", "tier": 1, "weight": 6, "pts": [Vector2i(0, 0), Vector2i(1, 1)]},
+		{"id": "diag_2_b", "tier": 1, "weight": 6, "pts": [Vector2i(1, 0), Vector2i(0, 1)]},
+		{"id": "diag_3_a", "tier": 2, "weight": 5, "pts": [Vector2i(0, 0), Vector2i(1, 1), Vector2i(2, 2)]},
+		{"id": "diag_3_b", "tier": 2, "weight": 5, "pts": [Vector2i(2, 0), Vector2i(1, 1), Vector2i(0, 2)]},
+		{"id": "rect_2x3", "tier": 2, "weight": 5, "pts": [
+			Vector2i(0, 0), Vector2i(1, 0),
+			Vector2i(0, 1), Vector2i(1, 1),
+			Vector2i(0, 2), Vector2i(1, 2)
+		]},
+		{"id": "rect_3x2", "tier": 2, "weight": 5, "pts": [
+			Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0),
+			Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)
+		]},
+		{"id": "u_up", "tier": 2, "weight": 4, "pts": [Vector2i(0, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)]},
+		{"id": "u_down", "tier": 2, "weight": 4, "pts": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(2, 1)]},
+		{"id": "big_t", "tier": 2, "weight": 4, "pts": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(1, 1), Vector2i(1, 2)]},
+		{"id": "steps_5", "tier": 2, "weight": 4, "pts": [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 2), Vector2i(2, 2)]},
 		{"id": "sq_3x3", "tier": 2, "weight": 4, "pts": [
 			Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0),
 			Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1),

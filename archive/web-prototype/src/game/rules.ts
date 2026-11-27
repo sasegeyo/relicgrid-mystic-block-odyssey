@@ -226,6 +226,75 @@ export const SHAPE_TEMPLATES: ShapeTemplate[] = [
       [0, 1],
     ],
   },
+  {
+    name: 'Diagonal Step R',
+    matrix: [
+      [0, 1],
+      [1, 0],
+    ],
+  },
+  {
+    name: 'Diagonal 3',
+    matrix: [
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+    ],
+  },
+  {
+    name: 'Rect 2x3',
+    matrix: [
+      [1, 1],
+      [1, 1],
+      [1, 1],
+    ],
+  },
+  {
+    name: 'Rect 3x2',
+    matrix: [
+      [1, 1, 1],
+      [1, 1, 1],
+    ],
+  },
+  {
+    name: 'Arch U5',
+    matrix: [
+      [1, 0, 1],
+      [1, 1, 1],
+    ],
+  },
+  {
+    name: 'Grand T5',
+    matrix: [
+      [1, 1, 1],
+      [0, 1, 0],
+      [0, 1, 0],
+    ],
+  },
+  {
+    name: 'Staircase W5',
+    matrix: [
+      [1, 0, 0],
+      [1, 1, 0],
+      [0, 1, 1],
+    ],
+  },
+  {
+    name: 'Square 3x3',
+    matrix: [
+      [1, 1, 1],
+      [1, 1, 1],
+      [1, 1, 1],
+    ],
+  },
+  {
+    name: 'Penta Bar H',
+    matrix: [[1, 1, 1, 1, 1]],
+  },
+  {
+    name: 'Penta Bar V',
+    matrix: [[1], [1], [1], [1], [1]],
+  },
 ];
 
 /**

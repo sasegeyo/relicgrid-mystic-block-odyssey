@@ -346,7 +346,7 @@ func _try_execute_booster_at(r: int, c: int) -> void:
 
 func use_hammer_at(r: int, c: int) -> bool:
 	if not _in_bounds(r, c) or not bool(cells[r][c]["active"]) or not bool(cells[r][c]["occupied"]):
-		AudioFeedbackManager.play_invalid()
+		AudioManager.play_invalid()
 		return false
 
 	var cell: Dictionary = cells[r][c]
@@ -356,7 +356,7 @@ func use_hammer_at(r: int, c: int) -> bool:
 
 	active_booster = ""
 	_booster_hover_cell = Vector2i(-1, -1)
-	AudioFeedbackManager.play_booster()
+	AudioManager.play_booster()
 	JuicyEffectsManager.shake(6.0, 0.18)
 	_spawn_pooled_wave_pop(r, c, COLOR_GOLD_GLOW, 0.0)
 
@@ -376,7 +376,7 @@ func use_hammer_at(r: int, c: int) -> bool:
 
 func use_bomb_at(center_r: int, center_c: int) -> bool:
 	if not _in_bounds(center_r, center_c) or not bool(cells[center_r][center_c]["active"]):
-		AudioFeedbackManager.play_invalid()
+		AudioManager.play_invalid()
 		return false
 
 	var hit_any: bool = false
@@ -402,12 +402,12 @@ func use_bomb_at(center_r: int, center_c: int) -> bool:
 				_spawn_pooled_wave_pop(rr, cc, COLOR_GOLD_HIGHLIGHT, dist * 0.035)
 
 	if not hit_any:
-		AudioFeedbackManager.play_invalid()
+		AudioManager.play_invalid()
 		return false
 
 	active_booster = ""
 	_booster_hover_cell = Vector2i(-1, -1)
-	AudioFeedbackManager.play_bomb_explode()
+	AudioManager.play_bomb_explode()
 	JuicyEffectsManager.shake(9.5, 0.28)
 
 	var pts: int = tiles_cleared * 40 + obs_broken * 150 + specials_cleared * 250
@@ -443,7 +443,7 @@ func clear_center_area(radius: int = 1) -> void:
 					cells[r][c] = _make_empty_cell(true)
 					_spawn_pooled_wave_pop(r, c, Color("#F87171"), 0.04)
 
-	AudioFeedbackManager.play_rescue()
+	AudioManager.play_rescue()
 	JuicyEffectsManager.shake(7.5, 0.25)
 	queue_redraw()
 
@@ -748,7 +748,7 @@ func place_piece(piece_data: Dictionary, anchor: Vector2i) -> Dictionary:
 			placed_coords.append(Vector2i(c, r))
 			idx_in_piece += 1
 
-	AudioFeedbackManager.play_place()
+	AudioManager.play_place()
 
 	# Tamamlanan satır ve sütunları tespit et (Joker kendi satır + sütununu anında temizler)
 	var full_rows: Array[int] = []
@@ -941,9 +941,9 @@ func place_piece(piece_data: Dictionary, anchor: Vector2i) -> Dictionary:
 	# Ses, Kamera Sarsıntısı ve Yüzen Puanlar
 	var anchor_center: Vector2 = _compute_piece_visual_center(placed_coords)
 	if lines_count > 0:
-		AudioFeedbackManager.play_line_clear(maxi(lines_count, streak_count))
+		AudioManager.play_line_clear(maxi(lines_count, streak_count))
 		if ice_cracked_any:
-			AudioFeedbackManager.play_ice_crack()
+			AudioManager.play_ice_crack()
 		if lines_count >= 2 or is_joker or streak_count >= 3:
 			var shake_amt: float = 5.5 + float(lines_count) * 2.5 + (3.0 if is_joker else 0.0)
 			JuicyEffectsManager.shake(shake_amt, 0.24)
@@ -954,7 +954,7 @@ func place_piece(piece_data: Dictionary, anchor: Vector2i) -> Dictionary:
 		_spawn_floating_text("+%d" % total_gained, anchor_center, COLOR_PARCHMENT, 21)
 
 	if curse_spread_count > 0:
-		AudioFeedbackManager.play_bomb_explode()
+		AudioManager.play_bomb_explode()
 		JuicyEffectsManager.shake(7.5, 0.24)
 
 	_emit_combo_state()
@@ -1094,7 +1094,7 @@ func _tick_cursed_seals() -> int:
 				min_danger_tick = mini(min_danger_tick, cur_t)
 
 	if min_danger_tick <= 3 and spread_total == 0:
-		AudioFeedbackManager.play_bomb_tick(min_danger_tick)
+		AudioManager.play_bomb_tick(min_danger_tick)
 
 	return spread_total
 

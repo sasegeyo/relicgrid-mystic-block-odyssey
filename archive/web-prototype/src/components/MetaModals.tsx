@@ -90,48 +90,36 @@ export const MetaModals: React.FC<MetaModalsProps> = ({
       aria-modal="true"
       aria-label={`RelicGrid ${activeModal} modal`}
     >
-      <div className="w-full max-w-4xl max-h-[86vh] flex flex-col rounded-xl bg-[#0B1C16] border-2 border-[#D99B26] shadow-2xl overflow-hidden text-[#F3EFE6]">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#07130F] border-b border-[#1D4033]">
-          <div className="flex items-center gap-3">
-            {activeModal === 'daily' && <CalendarIcon className="w-6 h-6" />}
-            {activeModal === 'campaign' && <MapIcon className="w-6 h-6" />}
-            {activeModal === 'league' && <TrophyIcon className="w-6 h-6" />}
-            {activeModal === 'shop' && <ShopIcon className="w-6 h-6" />}
-            <div>
-              <h2 className="font-display text-xl font-bold tracking-wide text-amber-300">
-                {activeModal === 'daily' && 'Daily Relic Calendar & November Mosaic'}
-                {activeModal === 'campaign' && '500-Stage Odyssey & Pastel Macera Map'}
-                {activeModal === 'league' && 'Weekly Gold II Cohort Leaderboard (30 Players)'}
-                {activeModal === 'shop' && 'Pastel & Relic Market · Temalar & Jokerler'}
-              </h2>
-              <p className="text-xs text-emerald-200/75">
-                {activeModal === 'daily' &&
-                  `November 2026 · Mystic Forest Collection · ${completedDaysCount}/30 Mosaic Pieces Revealed`}
-                {activeModal === 'campaign' &&
-                  `10 Ancient Biomes · 500 Progressive Stages · Highest Reached: Stage ${highestCampaignStage}`}
-                {activeModal === 'league' &&
-                  'Resets Sunday Midnight (3d 09h 59m left) · Top 3 Win Promotion Chests · Ranks 24-30 Demote'}
-                {activeModal === 'shop' &&
-                  'Pastel Block Blast & Relic Temaları · 6 Taktiksel Joker Marketi'}
-              </p>
-            </div>
+      <div className="w-full max-w-[400px] max-h-[88dvh] flex flex-col rounded-2xl bg-[#141E36] border border-white/12 shadow-2xl overflow-hidden text-white">
+        {/* Clean Mobile Modal Header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-[#10182C] border-b border-white/10">
+          <div className="flex items-center gap-2">
+            {activeModal === 'daily' && <CalendarIcon className="w-5 h-5" />}
+            {activeModal === 'campaign' && <MapIcon className="w-5 h-5" />}
+            {activeModal === 'league' && <TrophyIcon className="w-5 h-5" />}
+            {activeModal === 'shop' && <ShopIcon className="w-5 h-5" />}
+            <h2 className="font-display text-base font-extrabold tracking-wide text-white">
+              {activeModal === 'daily' && 'Günlük'}
+              {activeModal === 'campaign' && 'Macera'}
+              {activeModal === 'league' && 'Lig'}
+              {activeModal === 'shop' && 'Pazar'}
+            </h2>
           </div>
 
-          <div className="flex items-center gap-5">
-            <div className="flex items-center gap-1.5 text-sm font-mono-tabular text-amber-300">
-              <CoinIcon className="w-4 h-4" />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-xs font-mono-tabular text-amber-300 font-bold">
+              <CoinIcon className="w-3.5 h-3.5" />
               <span>{coins}</span>
-              <span className="text-emerald-500/50 mx-1">·</span>
-              <GemIcon className="w-4 h-4" />
+              <span className="text-white/25 mx-0.5">·</span>
+              <GemIcon className="w-3.5 h-3.5" />
               <span className="text-purple-300">{gems}</span>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 rounded-lg bg-[#122A21] hover:bg-[#1A3B2F] border border-amber-500/40 text-xs font-semibold text-amber-200 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors cursor-pointer"
             >
-              Close [Esc]
+              ✕
             </button>
           </div>
         </div>
@@ -522,106 +510,40 @@ export const MetaModals: React.FC<MetaModalsProps> = ({
             </div>
           )}
 
-          {/* 4. RELIC & PASTEL SHOP: SKINS, JOKERS & F2P REWARDED AD BUNDLES */}
+          {/* 4. MINIMAL MOBILE SHOP */}
           {activeModal === 'shop' && (
-            <div className="space-y-6">
-              {/* Cosmetics & Visual Block Skins (Pastel Blast + Relic Themes) */}
-              <div>
-                <h3 className="text-sm font-semibold text-amber-200 mb-3">
-                  🎨 Görsel Temalar & Blok Setleri (Pastel Blast & Relic Koleksiyonu)
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                  {Object.values(THEME_SKINS).map((skin) => {
-                    const isUnlocked = unlockedSkins.includes(skin.id);
-                    const isEquipped = equippedSkin === skin.id;
-
-                    return (
-                      <div
-                        key={skin.id}
-                        className={`p-4 rounded-lg border flex flex-col justify-between ${
-                          isEquipped
-                            ? 'bg-[#153428] border-amber-400'
-                            : 'bg-[#0E241C] border-[#1D4033]'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-white">{skin.name}</span>
-                            <div className="flex items-center gap-1">
-                              {Object.values(skin.blocks).map((b, i) => (
-                                <span
-                                  key={i}
-                                  className="w-3 h-3 rounded-xs border border-black/40"
-                                  style={{ backgroundColor: b.fill }}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          <p className="text-xs text-emerald-200/75 mt-1">{skin.subtitle}</p>
-                        </div>
-
-                        <div className="mt-4">
-                          {isEquipped ? (
-                            <span className="text-xs font-bold text-amber-300">
-                              ✓ Seçili Tema (Equipped)
-                            </span>
-                          ) : isUnlocked ? (
-                            <button
-                              type="button"
-                              onClick={() => onBuyOrEquipSkin(skin.id)}
-                              className="w-full py-1.5 px-3 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors cursor-pointer"
-                            >
-                              Seç ({skin.name})
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => onBuyOrEquipSkin(skin.id)}
-                              className="w-full py-1.5 px-3 rounded bg-purple-700 hover:bg-purple-600 text-white font-semibold text-xs transition-colors cursor-pointer"
-                            >
-                              {skin.costCoins
-                                ? `Aç (${skin.costCoins} Coin / ${skin.costGems} Gem)`
-                                : `Aç (${skin.costGems} Gems)`}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Pastel Blast Individual Joker Market + Free +50 Coin Button */}
+            <div className="space-y-5">
+              {/* Jokerler */}
               {onBuySingleBooster && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-amber-200">
-                      ⚡ Tekli Taktiksel Joker Satın Al (Stok Ekle)
-                    </h3>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-blue-200/75 uppercase tracking-wider">
+                      Jokerler
+                    </span>
                     {onGrantFreeCoins && (
                       <button
                         type="button"
                         onClick={() => onGrantFreeCoins(50)}
-                        className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer transition-colors"
+                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs cursor-pointer transition-colors"
                       >
-                        🎁 +50 Coin Ücretsiz Bonus Al
+                        +50 🪙
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     {(
                       [
-                        { type: 'reroll' as const, title: '↻ Yenile (Shuffle)', cost: 25 },
-                        { type: 'rotate' as const, title: '⟳ Döndür (Rotate)', cost: 20 },
-                        { type: 'hammer' as const, title: '🔨 Çekiç (Hammer)', cost: 30 },
-                        { type: 'bomb_blast' as const, title: '💥 3×3 Bomba', cost: 40 },
-                        { type: 'laser' as const, title: '⚡ Satır/Sütun Lazeri', cost: 45 },
-                        { type: 'single_star' as const, title: '✨ 1×1 Yıldız Blok', cost: 35 },
+                        { type: 'reroll' as const, title: '↻ Yenile', cost: 25 },
+                        { type: 'rotate' as const, title: '⟳ Döndür', cost: 20 },
+                        { type: 'hammer' as const, title: '🔨 Çekiç', cost: 30 },
+                        { type: 'bomb_blast' as const, title: '💥 Bomba', cost: 40 },
+                        { type: 'laser' as const, title: '⚡ Lazer', cost: 45 },
+                        { type: 'single_star' as const, title: '✨ Yıldız', cost: 35 },
                       ]
                     ).map((j) => (
                       <div
                         key={j.type}
-                        className="p-3 rounded-lg bg-[#0E241C] border border-[#1D4033] flex flex-col justify-between gap-2"
+                        className="p-2.5 rounded-xl bg-white/6 flex flex-col gap-2"
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-white">{j.title}</span>
@@ -632,9 +554,9 @@ export const MetaModals: React.FC<MetaModalsProps> = ({
                         <button
                           type="button"
                           onClick={() => onBuySingleBooster(j.type, j.cost)}
-                          className="w-full py-1.5 px-2.5 rounded bg-amber-500/90 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer transition-colors"
+                          className="w-full py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs cursor-pointer transition-colors"
                         >
-                          +1 Al (🪙 {j.cost})
+                          🪙 {j.cost}
                         </button>
                       </div>
                     ))}
@@ -642,54 +564,59 @@ export const MetaModals: React.FC<MetaModalsProps> = ({
                 </div>
               )}
 
-              {/* Booster Bundles, Value Starter Pack & F2P Daily Ad Chest */}
-              <div>
-                <h3 className="text-sm font-semibold text-amber-200 mb-3">
-                  📦 Avantaj Paketleri & Günlük Ücretsiz Sandık
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {SHOP_BUNDLES.map((bundle) => {
-                    const alreadyClaimed = claimedShopBundles.includes(bundle.id);
+              {/* Temalar */}
+              <div className="space-y-2.5">
+                <span className="text-xs font-bold text-blue-200/75 uppercase tracking-wider block">
+                  Temalar
+                </span>
+                <div className="space-y-2">
+                  {Object.values(THEME_SKINS).map((skin) => {
+                    const isUnlocked = unlockedSkins.includes(skin.id);
+                    const isEquipped = equippedSkin === skin.id;
+
                     return (
                       <div
-                        key={bundle.id}
-                        className="p-4 rounded-lg bg-[#0E241C] border border-[#1D4033] flex flex-col justify-between"
+                        key={skin.id}
+                        className={`p-3 rounded-xl flex items-center justify-between gap-2 ${
+                          isEquipped ? 'bg-white/14 border border-amber-400/70' : 'bg-white/6'
+                        }`}
                       >
-                        <div>
-                          <div className="text-sm font-bold text-amber-200">{bundle.title}</div>
-                          <p className="text-xs text-emerald-100/80 mt-1">{bundle.subtitle}</p>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {Object.values(skin.blocks)
+                              .slice(0, 4)
+                              .map((b, i) => (
+                                <span
+                                  key={i}
+                                  className="w-3 h-3 rounded-xs"
+                                  style={{ backgroundColor: b.fill }}
+                                />
+                              ))}
+                          </div>
+                          <span className="text-xs font-bold text-white truncate">{skin.name}</span>
                         </div>
-                        <div className="mt-4">
-                          {bundle.isRewardedAd ? (
-                            alreadyClaimed ? (
-                              <span className="text-xs font-semibold text-emerald-400">
-                                Daily Chest Claimed Today
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  triggerSimulatedRewardedAd('Daily Sanctuary Chest', () =>
-                                    onPurchaseBundle(bundle)
-                                  )
-                                }
-                                className="w-full py-2 px-4 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
-                              >
-                                Watch Ad · Claim Free Chest (+120 Coins)
-                              </button>
-                            )
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => onPurchaseBundle(bundle)}
-                              className="w-full py-2 px-4 rounded bg-[#183B2E] hover:bg-[#204D3C] border border-amber-400/50 text-amber-200 font-bold text-xs transition-colors cursor-pointer"
-                            >
-                              {bundle.costCoins
-                                ? `Buy Bundle (${bundle.costCoins} Coins)`
-                                : `Buy Value Pack (${bundle.costGems} Gems)`}
-                            </button>
-                          )}
-                        </div>
+
+                        {isEquipped ? (
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-bold shrink-0">
+                            ✓ Aktif
+                          </span>
+                        ) : isUnlocked ? (
+                          <button
+                            type="button"
+                            onClick={() => onBuyOrEquipSkin(skin.id)}
+                            className="px-3 py-1 rounded-lg bg-white/14 hover:bg-white/22 text-white font-bold text-xs cursor-pointer shrink-0 transition-colors"
+                          >
+                            Seç
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onBuyOrEquipSkin(skin.id)}
+                            className="px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs cursor-pointer shrink-0 transition-colors"
+                          >
+                            {skin.costCoins ? `🪙 ${skin.costCoins}` : `💎 ${skin.costGems}`}
+                          </button>
+                        )}
                       </div>
                     );
                   })}

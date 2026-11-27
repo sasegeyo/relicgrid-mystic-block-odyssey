@@ -123,7 +123,7 @@ func is_tray_empty() -> bool:
 
 
 func use_refresh_booster() -> void:
-	AudioFeedbackManager.play_booster()
+	AudioManager.play_booster()
 	refill_tray()
 
 
@@ -170,31 +170,16 @@ func refill_tray() -> void:
 	var current_bombs: int = 0
 	if grid_board != null:
 		fittable = grid_board.get_fittable_shapes(tier_filtered)
-		if fittable.is_empty():
-			fittable = grid_board.get_fittable_shapes(all_shapes)
 		occupancy = grid_board.get_occupancy_ratio()
 		current_bombs = grid_board.get_bomb_count()
 
-	var guaranteed_slot: int = _rng.randi_range(0, SLOT_COUNT - 1)
-	var inject_joker_slot: int = -1
-	if occupancy >= 0.85 and jokers_used < MAX_JOKERS:
-		inject_joker_slot = guaranteed_slot
-		jokers_used += 1
-
-	var inject_mono_slot: int = -1
-	if inject_joker_slot < 0 and occupancy >= 0.70:
-		inject_mono_slot = guaranteed_slot
+	# Sadece tahta henüz çok dolmamışken (< %72) 1 sığan parça yardımı ver;
+	# %72 üstünde tamamen doğal çekiliş yap ki oyuncu sıkıştığında gerçekten kaybedebilsin.
+	var guaranteed_slot: int = _rng.randi_range(0, SLOT_COUNT - 1) if occupancy < 0.72 else -1
 
 	for i in range(SLOT_COUNT):
-		if i == inject_joker_slot:
-			slots[i] = PieceLibrary.create_joker_piece()
-			_slot_spawn_scales[i] = 0.15
-			continue
-
 		var chosen_shape: Dictionary
-		if i == inject_mono_slot:
-			chosen_shape = PieceLibrary.get_shape_by_id("mono_1")
-		elif i == guaranteed_slot and not fittable.is_empty():
+		if i == guaranteed_slot and not fittable.is_empty():
 			chosen_shape = _pick_weighted_shape(fittable, occupancy, dda_t)
 		else:
 			chosen_shape = _pick_weighted_shape(tier_filtered, occupancy, dda_t)
@@ -267,7 +252,7 @@ func try_emergency_rescue() -> bool:
 
 	rescues_used += 1
 	_slot_spawn_scales[target_slot] = 0.15
-	AudioFeedbackManager.play_rescue()
+	AudioManager.play_rescue()
 	queue_redraw()
 	rescue_triggered.emit()
 	return true
@@ -399,7 +384,7 @@ func _try_rotate_at(local_pos: Vector2) -> void:
 		cells_arr.append(p as Vector2i)
 
 	if PieceLibrary.is_rotationally_symmetric(cells_arr):
-		AudioFeedbackManager.play_invalid()
+		AudioManager.play_invalid()
 		symmetric_rotate_rejected.emit()
 		return
 
@@ -410,7 +395,7 @@ func _try_rotate_at(local_pos: Vector2) -> void:
 	piece["height"] = b.y
 	rotate_mode_active = false
 	_slot_spawn_scales[idx] = 0.72
-	AudioFeedbackManager.play_booster()
+	AudioManager.play_booster()
 	queue_redraw()
 	piece_rotated.emit()
 
@@ -449,7 +434,7 @@ func _try_begin_drag(local_pos: Vector2, global_pos: Vector2, is_touch: bool) ->
 	_return_anim_slot = -1
 	_drag_pointer_global = global_pos
 	_drag_scale = 0.65
-	AudioFeedbackManager.play_pickup()
+	AudioManager.play_pickup()
 	_update_drag(global_pos)
 	queue_redraw()
 
@@ -493,7 +478,7 @@ func _finish_drag(global_pointer: Vector2) -> void:
 			else:
 				check_moves_still_possible()
 	else:
-		AudioFeedbackManager.play_invalid()
+		AudioManager.play_invalid()
 		_return_anim_slot = slot_idx
 		_return_anim_pos = get_global_transform().affine_inverse() * (_drag_pointer_global + lift)
 		_return_anim_t = 0.0
@@ -505,8 +490,6 @@ func check_moves_still_possible() -> void:
 		return
 	var active: Array = get_active_pieces()
 	if not active.is_empty() and not grid_board.has_any_valid_move(active):
-		if try_emergency_rescue():
-			return
 		no_moves_remaining.emit()
 
 

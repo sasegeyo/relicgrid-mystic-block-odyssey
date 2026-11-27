@@ -137,7 +137,7 @@ func _build_layout() -> void:
 	shop_btn.pressed.connect(_open_shop_overlay)
 	top_bar.add_child(shop_btn)
 
-	_sound_btn = ThemeManager.make_button("✕" if AudioFeedbackManager.sound_muted else "♪", 19, "stone")
+	_sound_btn = ThemeManager.make_button("✕" if AudioManager.sound_muted else "♪", 19, "stone")
 	_sound_btn.custom_minimum_size = Vector2(50, 46)
 	_sound_btn.pressed.connect(toggle_sound)
 	top_bar.add_child(_sound_btn)
@@ -492,13 +492,13 @@ func toggle_pause() -> void:
 
 
 func toggle_sound() -> void:
-	var sound_on: bool = AudioFeedbackManager.toggle_sound()
+	var sound_on: bool = AudioManager.toggle_sound()
 	if _sound_btn != null:
 		_sound_btn.text = "♪" if sound_on else "✕"
 
 
 func toggle_haptics() -> void:
-	AudioFeedbackManager.toggle_haptics()
+	AudioManager.toggle_haptics()
 
 
 # --- EKONOMİ & GÜÇLENDİRİCİLER ---
@@ -546,7 +546,7 @@ func _on_booster_pressed(booster_id: String) -> void:
 			return
 		grid_board.set_booster_targeting("")
 		piece_tray.set_rotate_targeting(true)
-		AudioFeedbackManager.play_pickup()
+		AudioManager.play_pickup()
 		_update_booster_buttons()
 		return
 
@@ -570,7 +570,7 @@ func _on_booster_pressed(booster_id: String) -> void:
 			_sync_economy_ui()
 			save_current_progress()
 	else:
-		AudioFeedbackManager.play_pickup()
+		AudioManager.play_pickup()
 		grid_board.set_booster_targeting(booster_id)
 		_update_booster_buttons()
 
@@ -619,7 +619,7 @@ func _can_any_booster_help() -> bool:
 
 
 func _open_shop_overlay() -> void:
-	AudioFeedbackManager.play_pickup()
+	AudioManager.play_pickup()
 	grid_board.set_booster_targeting("")
 	piece_tray.set_rotate_targeting(false)
 	_update_booster_buttons()
@@ -647,7 +647,7 @@ func _add_score(delta_pts: int) -> void:
 	# İlk kez Best Score geçildiğinde oyun başına 1 kez bildirim + ses
 	if not _new_best_announced and _run_initial_best > 0 and current_score > _run_initial_best:
 		_new_best_announced = true
-		AudioFeedbackManager.play_new_best()
+		AudioManager.play_new_best()
 		show_status("YENİ REKOR!", Color("#FDE68A"))
 
 	# Her 1500 puanda en az sahip olunan güçlendiriciye +1 ödül (tavan 9)
@@ -660,7 +660,7 @@ func _grant_booster_reward() -> void:
 	var awarded: String = GameState.grant_lowest_booster(9)
 	if awarded == "":
 		return
-	AudioFeedbackManager.play_booster()
+	AudioManager.play_booster()
 	var label_map: Dictionary = {
 		"hammer": "+1 ÇEKİÇ!",
 		"rotate": "+1 DÖNDÜR!",
@@ -702,7 +702,7 @@ func _on_piece_placed(summary: Dictionary) -> void:
 		if int(summary.get("occupied_count", 1)) == 0:
 			var bonus: int = 500 * maxi(1, streak_c)
 			_add_score(bonus)
-			AudioFeedbackManager.play_all_clear()
+			AudioManager.play_all_clear()
 			var b_center: Vector2 = summary.get("board_center_global", grid_board.get_board_center_global())
 			JuicyEffectsManager.play_all_clear_celebration(b_center)
 			show_combo_popup("TAHTA TEMİZ! +%d" % bonus, Color("#4AE3A7"))
@@ -739,14 +739,6 @@ func _on_no_moves_remaining() -> void:
 	]
 	if not is_endless and current_score >= target_score and broken_obstacles >= target_obstacles:
 		_trigger_stage_clear()
-		return
-
-	# Güçlendirici kurtarabiliyorsa Game Over yerine uyarı + güçlendirici kullanma fırsatı ver!
-	if _can_any_booster_help():
-		_stuck_offer_active = true
-		_btn_give_up.visible = true
-		AudioFeedbackManager.play_invalid()
-		show_status("Hamle yok! Güçlendirici kullan", Color("#FDE68A"))
 		return
 
 	_trigger_game_over()
@@ -817,7 +809,7 @@ func _trigger_stage_clear() -> void:
 	grid_board.set_booster_targeting("")
 	piece_tray.set_rotate_targeting(false)
 	piece_tray.set_interaction_locked(true)
-	AudioFeedbackManager.play_all_clear()
+	AudioManager.play_all_clear()
 
 	var stars: int = _compute_earned_stars()
 	var reward_info: Dictionary = {}
@@ -850,7 +842,7 @@ func _trigger_stage_clear() -> void:
 		var next_btn := ThemeManager.make_button("▶ BÖLÜM %d" % next_stage, 22, "gold")
 		next_btn.custom_minimum_size = Vector2(0, 60)
 		next_btn.pressed.connect(func() -> void:
-			AudioFeedbackManager.play_pickup()
+			AudioManager.play_pickup()
 			GameState.selected_stage = next_stage
 			GameState.campaign_page = int((next_stage - 1) / 20)
 			_start_configured_level(true)
@@ -860,7 +852,7 @@ func _trigger_stage_clear() -> void:
 	var replay_btn := ThemeManager.make_button("↻ TEKRAR", 19, "stone")
 	replay_btn.custom_minimum_size = Vector2(0, 52)
 	replay_btn.pressed.connect(func() -> void:
-		AudioFeedbackManager.play_pickup()
+		AudioManager.play_pickup()
 		_start_configured_level(true)
 	)
 	_modal_box.add_child(replay_btn)
@@ -868,7 +860,7 @@ func _trigger_stage_clear() -> void:
 	var menu_btn := ThemeManager.make_button("ANA MENÜ", 18, "stone")
 	menu_btn.custom_minimum_size = Vector2(0, 50)
 	menu_btn.pressed.connect(func() -> void:
-		AudioFeedbackManager.play_pickup()
+		AudioManager.play_pickup()
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 	)
 	_modal_box.add_child(menu_btn)
@@ -882,7 +874,7 @@ func _trigger_game_over() -> void:
 	grid_board.set_booster_targeting("")
 	piece_tray.set_rotate_targeting(false)
 	piece_tray.set_interaction_locked(true)
-	AudioFeedbackManager.play_game_over()
+	AudioManager.play_game_over()
 
 	var res: Dictionary = {}
 	if GameState.active_mode == GameState.PlayMode.MODE_NORMAL_ENDLESS:
@@ -914,7 +906,7 @@ func _trigger_game_over() -> void:
 	var retry_btn := ThemeManager.make_button("↻ TEKRAR", 20, "gold")
 	retry_btn.custom_minimum_size = Vector2(0, 56)
 	retry_btn.pressed.connect(func() -> void:
-		AudioFeedbackManager.play_pickup()
+		AudioManager.play_pickup()
 		_start_configured_level(true)
 	)
 	_modal_box.add_child(retry_btn)
@@ -922,7 +914,7 @@ func _trigger_game_over() -> void:
 	var menu_btn := ThemeManager.make_button("ANA MENÜ", 18, "stone")
 	menu_btn.custom_minimum_size = Vector2(0, 50)
 	menu_btn.pressed.connect(func() -> void:
-		AudioFeedbackManager.play_pickup()
+		AudioManager.play_pickup()
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 	)
 	_modal_box.add_child(menu_btn)
@@ -943,7 +935,7 @@ func revive_game() -> void:
 
 
 func _open_pause_modal() -> void:
-	AudioFeedbackManager.play_pickup()
+	AudioManager.play_pickup()
 	grid_board.set_booster_targeting("")
 	piece_tray.set_rotate_targeting(false)
 	_update_booster_buttons()
@@ -962,21 +954,21 @@ func _open_pause_modal() -> void:
 	var toggles_hb := HBoxContainer.new()
 	toggles_hb.add_theme_constant_override("separation", 12)
 
-	var snd_btn := ThemeManager.make_button("SES: " + ("KAPALI" if AudioFeedbackManager.sound_muted else "AÇIK"), 16, "stone")
+	var snd_btn := ThemeManager.make_button("SES: " + ("KAPALI" if AudioManager.sound_muted else "AÇIK"), 16, "stone")
 	snd_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	snd_btn.custom_minimum_size = Vector2(0, 50)
 	snd_btn.pressed.connect(func() -> void:
 		toggle_sound()
-		snd_btn.text = "SES: " + ("KAPALI" if AudioFeedbackManager.sound_muted else "AÇIK")
+		snd_btn.text = "SES: " + ("KAPALI" if AudioManager.sound_muted else "AÇIK")
 	)
 	toggles_hb.add_child(snd_btn)
 
-	var hap_btn := ThemeManager.make_button("TİTREŞİM: " + ("KAPALI" if AudioFeedbackManager.haptics_muted else "AÇIK"), 16, "stone")
+	var hap_btn := ThemeManager.make_button("TİTREŞİM: " + ("KAPALI" if AudioManager.haptics_muted else "AÇIK"), 16, "stone")
 	hap_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hap_btn.custom_minimum_size = Vector2(0, 50)
 	hap_btn.pressed.connect(func() -> void:
 		toggle_haptics()
-		hap_btn.text = "TİTREŞİM: " + ("KAPALI" if AudioFeedbackManager.haptics_muted else "AÇIK")
+		hap_btn.text = "TİTREŞİM: " + ("KAPALI" if AudioManager.haptics_muted else "AÇIK")
 	)
 	toggles_hb.add_child(hap_btn)
 	_modal_box.add_child(toggles_hb)
@@ -984,7 +976,7 @@ func _open_pause_modal() -> void:
 	var restart_btn := ThemeManager.make_button("↻ YENİDEN", 19, "stone")
 	restart_btn.custom_minimum_size = Vector2(0, 52)
 	restart_btn.pressed.connect(func() -> void:
-		AudioFeedbackManager.play_pickup()
+		AudioManager.play_pickup()
 		_start_configured_level(true)
 	)
 	_modal_box.add_child(restart_btn)
@@ -994,7 +986,7 @@ func _open_pause_modal() -> void:
 		map_btn.custom_minimum_size = Vector2(0, 52)
 		map_btn.pressed.connect(func() -> void:
 			save_current_progress()
-			AudioFeedbackManager.play_pickup()
+			AudioManager.play_pickup()
 			get_tree().change_scene_to_file("res://scenes/CampaignMap.tscn")
 		)
 		_modal_box.add_child(map_btn)
@@ -1003,7 +995,7 @@ func _open_pause_modal() -> void:
 	menu_btn.custom_minimum_size = Vector2(0, 50)
 	menu_btn.pressed.connect(func() -> void:
 		save_current_progress()
-		AudioFeedbackManager.play_pickup()
+		AudioManager.play_pickup()
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 	)
 	_modal_box.add_child(menu_btn)

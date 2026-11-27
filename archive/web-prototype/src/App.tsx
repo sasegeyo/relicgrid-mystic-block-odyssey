@@ -50,7 +50,6 @@ import {
 } from './components/RelicIcons';
 import { CanvasParticleBurst, RelicBoardCanvas, ShellState } from './components/RelicBoardCanvas';
 import { ActiveMetaModal, MetaModals } from './components/MetaModals';
-import { GodotExportModal } from './components/GodotExportModal';
 
 interface FrozenRunSummary {
   outcome: 'victory' | 'defeat';
@@ -969,75 +968,75 @@ export default function App() {
   }, [equippedSkin, unlockedSkins]);
 
   return (
-    <main className="relative w-screen h-screen overflow-hidden select-none">
-      {/* 1. Isolated 60fps Canvas World & Board Viewport */}
-      <RelicBoardCanvas
-        shellState={shellState}
-        board={board}
-        architecture={architecture}
-        tray={tray}
-        selectedPieceIndex={selectedPieceIndex}
-        activeTargetingBooster={activeTargetingBooster}
-        themeId={equippedSkin}
-        burstSignal={burstSignal}
-        curtainSignal={curtainSignal}
-        onSelectPiece={(idx) => setSelectedPieceIndex(idx)}
-        onPlacePiece={handlePlacePiece}
-        onUseTargetBooster={handleUseTargetBooster}
-        onRotatePiece={handleRotatePiece}
-        onRerollTray={handleRerollTray}
-        onActivateBoosterMode={handleActivateBoosterMode}
-        onStartGame={() => startNewRun(gameMode, architecture, currentCampaignStage, true)}
-        onTogglePause={handleTogglePause}
-        onToggleMute={handleToggleMute}
-      />
+    <main className="w-screen h-[100dvh] bg-[#090F1D] flex items-center justify-center overflow-hidden select-none">
+      {/* Mobile-First Portrait App Shell */}
+      <div className="relative w-full max-w-[430px] h-full bg-[#121B33] sm:border-x sm:border-white/10 overflow-hidden shadow-2xl">
+        {/* 1. 60fps Canvas World & Board Viewport (Only rendered during gameplay, never cluttering title screen) */}
+        {shellState !== 'title' && (
+          <RelicBoardCanvas
+            shellState={shellState}
+            board={board}
+            architecture={architecture}
+            tray={tray}
+            selectedPieceIndex={selectedPieceIndex}
+            activeTargetingBooster={activeTargetingBooster}
+            themeId={equippedSkin}
+            burstSignal={burstSignal}
+            curtainSignal={curtainSignal}
+            onSelectPiece={(idx) => setSelectedPieceIndex(idx)}
+            onPlacePiece={handlePlacePiece}
+            onUseTargetBooster={handleUseTargetBooster}
+            onRotatePiece={handleRotatePiece}
+            onRerollTray={handleRerollTray}
+            onActivateBoosterMode={handleActivateBoosterMode}
+            onStartGame={() => startNewRun(gameMode, architecture, currentCampaignStage, true)}
+            onTogglePause={handleTogglePause}
+            onToggleMute={handleToggleMute}
+          />
+        )}
 
-      {/* 2. TITLE SCREEN STAGE (Merged Block Blast Pastel Edition + RelicGrid Odyssey) */}
-      {shellState === 'title' && (
-        <section
-          aria-label="Title Screen"
-          className="fixed inset-0 z-20 pointer-events-none flex flex-col justify-between p-6 md:p-12"
-        >
-          <div className="max-w-xl w-full my-auto pointer-events-auto space-y-5 bg-[#1B2748]/95 p-6 md:p-8 rounded-3xl border-2 border-[#FFD95A]/80 shadow-2xl">
-            <div className="flex items-center justify-between gap-3">
-              <RelicTitleEmblem className="w-full max-w-sm" />
+        {/* 2. CLEAN FLAT MOBILE TITLE SCREEN */}
+        {shellState === 'title' && (
+          <section
+            aria-label="Title Screen"
+            className="absolute inset-0 z-20 flex flex-col justify-center p-5 bg-[#121B33]"
+          >
+            <div className="w-full space-y-5 bg-[#182442] p-5 rounded-2xl border border-white/10">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xl font-display font-extrabold tracking-wide text-white">
+                RELIC GRID
+              </div>
               <button
                 type="button"
                 onClick={cyclePastelAndRelicTheme}
-                className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 text-xs font-extrabold text-amber-200 cursor-pointer whitespace-nowrap shrink-0"
+                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/18 text-xs font-semibold text-blue-100 cursor-pointer whitespace-nowrap shrink-0 transition-colors"
               >
                 🎨 {THEME_SKINS[equippedSkin].name}
               </button>
             </div>
 
-            <p className="text-sm text-blue-100/90 leading-relaxed">
-              <strong>BLOCK BLAST: RelicGrid Pastel Edition</strong> — Yumuşak mat 3D pastel bloklar,
-              satır/sütun renk değiştiren patlama önizlemesi, yıldızlı elmas bloklar, 6 taktiksel
-              Joker, 500 Macera Bölümü ve 30 oyunculu Haftalık Lig tek oyunda birleşti!
-            </p>
-
-            {/* Game Mode Selection Tabs */}
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-                Oyun Modu Seç (Game Modes)
+            {/* Mod Seçimi */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold text-blue-200/70 uppercase tracking-wider">
+                Mod
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {(
                   [
-                    { id: 'classic', label: '♾️ Klasik Sonsuz' },
-                    { id: 'campaign', label: '🗺️ Macera (500)' },
-                    { id: 'daily', label: '📅 Günlük Görev' },
-                    { id: 'blitz', label: '⏱️ Time Blitz' },
+                    { id: 'classic', label: 'Klasik' },
+                    { id: 'campaign', label: 'Macera' },
+                    { id: 'daily', label: 'Günlük' },
+                    { id: 'blitz', label: 'Blitz' },
                   ] as const
                 ).map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => setGameMode(m.id)}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 border ${
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                       gameMode === m.id
-                        ? 'bg-amber-400 text-slate-950 border-amber-200 shadow-md'
-                        : 'bg-[#24345E] text-blue-100 border-white/15 hover:border-amber-300/60'
+                        ? 'bg-amber-400 text-slate-950'
+                        : 'bg-white/8 text-blue-100 hover:bg-white/14'
                     }`}
                   >
                     {m.label}
@@ -1046,17 +1045,17 @@ export default function App() {
               </div>
             </div>
 
-            {/* Variable Grid Architecture Selector */}
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-                Tahta Mimarisi (Grid Architecture)
+            {/* Tahta Seçimi */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold text-blue-200/70 uppercase tracking-wider">
+                Tahta
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {(
                   [
-                    { id: 'standard', label: 'Standart 8×8' },
-                    { id: 'holed', label: 'Delikli 2×2' },
-                    { id: 'shifting', label: 'Kayan Satırlar' },
+                    { id: 'standard', label: '8×8' },
+                    { id: 'holed', label: 'Delikli' },
+                    { id: 'shifting', label: 'Kayan' },
                     { id: 'l_shaped', label: 'L-Tahta' },
                   ] as const
                 ).map((arch) => (
@@ -1064,10 +1063,10 @@ export default function App() {
                     key={arch.id}
                     type="button"
                     onClick={() => setArchitecture(arch.id)}
-                    className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0 border ${
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                       architecture === arch.id
-                        ? 'bg-emerald-500 text-slate-950 border-emerald-200 font-extrabold'
-                        : 'bg-[#172342] text-blue-100/80 border-white/15 hover:text-white'
+                        ? 'bg-emerald-400 text-slate-950 font-bold'
+                        : 'bg-white/8 text-blue-100/85 hover:bg-white/14'
                     }`}
                   >
                     {arch.label}
@@ -1076,49 +1075,40 @@ export default function App() {
               </div>
             </div>
 
-            {/* Primary Start CTA + Meta Quick Links */}
-            <div className="flex flex-wrap items-center gap-2.5 pt-2">
+            {/* Ana Başlat Butonu + Alt Kısayollar */}
+            <div className="space-y-2.5 pt-1">
               <button
                 type="button"
                 data-start="true"
                 onClick={() => startNewRun(gameMode, architecture, currentCampaignStage, true)}
-                className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-display font-extrabold text-base tracking-wider shadow-lg transition-transform active:scale-98 cursor-pointer whitespace-nowrap"
+                className="w-full py-3.5 px-5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-display font-extrabold text-base tracking-wide transition-colors cursor-pointer"
               >
-                ▶ OYUNA BAŞLA (Start Odyssey)
+                ▶ OYNA
               </button>
-              <button
-                type="button"
-                onClick={() => setActiveModal('shop')}
-                className="py-3.5 px-4 rounded-2xl bg-[#24345E] hover:bg-[#2F4378] border border-amber-300/50 text-amber-200 text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
-              >
-                🛒 Market & Temalar
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveModal('daily')}
-                className="py-3.5 px-3.5 rounded-2xl bg-[#24345E] hover:bg-[#2F4378] border border-emerald-300/40 text-emerald-200 text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
-              >
-                🔥 Seri ({currentStreak}g)
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsGodotModalOpen(true)}
-                className="py-3.5 px-3.5 rounded-2xl bg-[#14293A] hover:bg-[#1D3B52] border border-[#478CBF] text-[#9AD4FF] text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
-              >
-                Godot 4 (.ZIP)
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('shop')}
+                  className="py-2.5 px-3 rounded-xl bg-white/8 hover:bg-white/15 text-blue-100 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  🛒 Market
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('daily')}
+                  className="py-2.5 px-3 rounded-xl bg-white/8 hover:bg-white/15 text-emerald-300 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  🔥 Seri ({currentStreak}g)
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div className="text-xs text-blue-100/85 font-mono-tabular tracking-wide">
-            1-3 Parça Seç · Sürükle veya Ok Tuşları · Space Yerleştir · R Döndür · H Çekiç · F Yenile · B 3×3 Bomba · L Lazer · G 1×1 Yıldız
           </div>
         </section>
       )}
 
       {/* 3. MOBILE-FIRST VERTICALLY STACKED GAMEPLAY SHELL (Top HUD -> Board/Tray -> Bottom 6-Joker Bar) */}
       {shellState !== 'title' && (
-        <div className="fixed inset-0 z-10 pointer-events-none flex flex-col justify-between items-center px-2.5 py-2 sm:py-3">
+        <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between items-center px-2.5 py-2 sm:py-3">
           {/* STREAMLINED BLOCK BLAST PASTEL + RELIC TOP HUD */}
           <header className="w-full max-w-[468px] pointer-events-auto flex flex-col gap-1.5 bg-[#1B284B]/92 backdrop-blur-md px-2.5 sm:px-3.5 py-2 rounded-2xl border border-[#FFD95A]/55 shadow-xl">
             {/* Top Sub-Row: Crown Best, Milestone Progress Pill, Currencies, Hub Pills & Settings */}
@@ -1195,15 +1185,6 @@ export default function App() {
                 >
                   <ShopIcon className="hidden sm:block w-3 h-3 shrink-0" />
                   <span>Market</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsGodotModalOpen(true)}
-                  aria-label="Godot 4 Export Studio"
-                  title="Godot 4.3+ Proje & Kaynak Kod Paketi İndir"
-                  className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg bg-[#122636] hover:bg-[#1A364D] border border-[#478CBF] text-[10px] font-bold text-[#9AD4FF] cursor-pointer transition-colors whitespace-nowrap"
-                >
-                  <span>G4</span>
                 </button>
               </div>
 
@@ -1498,31 +1479,22 @@ export default function App() {
               >
                 🔄 Yeniden Başlat (Perde Geçişi)
               </button>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShellState('playing');
-                    setActiveModal('shop');
-                  }}
-                  className="py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-amber-200 font-bold text-xs cursor-pointer transition-colors"
-                >
-                  🎨 Tema & Market
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsGodotModalOpen(true)}
-                  className="py-2.5 px-3 rounded-2xl bg-[#14293A] hover:bg-[#1D3B52] border border-[#478CBF] text-[#9AD4FF] font-bold text-xs cursor-pointer transition-colors"
-                >
-                  📦 Godot 4 (.ZIP)
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShellState('playing');
+                  setActiveModal('shop');
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/18 text-amber-200 font-bold text-xs cursor-pointer transition-colors"
+              >
+                🎨 Tema & Market
+              </button>
               <button
                 type="button"
                 onClick={() => setShellState('title')}
-                className="w-full py-2.5 px-5 rounded-2xl bg-black/35 hover:bg-black/50 border border-white/15 text-blue-100/80 font-semibold text-xs cursor-pointer transition-colors"
+                className="w-full py-2.5 px-5 rounded-xl bg-black/35 hover:bg-black/50 text-blue-100/80 font-semibold text-xs cursor-pointer transition-colors"
               >
-                🏠 Ana Ekrana Dön (Title Screen)
+                Ana Menü
               </button>
             </div>
           </div>
@@ -1535,7 +1507,7 @@ export default function App() {
           role="dialog"
           aria-modal="true"
           aria-label={frozenSummary.outcome === 'victory' ? 'Stage Clear Victory' : 'Game Over'}
-          className="fixed inset-0 z-30 flex items-center justify-center p-4 bg-black/80 pointer-events-auto"
+          className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-black/80 pointer-events-auto"
         >
           <div className="w-full max-w-md p-6 rounded-3xl bg-[#1F2C52] border-2 border-[#FFD95A] shadow-2xl text-center space-y-4">
             <div>
@@ -1692,12 +1664,7 @@ export default function App() {
         onBuySingleBooster={handleBuySingleBooster}
         onGrantFreeCoins={handleGrantFreeCoins}
       />
-
-      {/* 7. GODOT 4.3+ PROJECT EXPORT STUDIO MODAL */}
-      <GodotExportModal
-        isOpen={isGodotModalOpen}
-        onClose={() => setIsGodotModalOpen(false)}
-      />
+      </div>
     </main>
   );
 }
