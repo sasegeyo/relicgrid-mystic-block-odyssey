@@ -404,24 +404,28 @@ func _input(event: InputEvent) -> void:
 	if _dragging_slot < 0:
 		return
 
+	# _input olayları ekran (viewport) koordinatındadır; kamera/sarsıntı dönüşümünü
+	# geri alarak _gui_input ve get_global_transform ile aynı uzaya çeviriyoruz.
+	var to_canvas: Transform2D = get_viewport().get_canvas_transform().affine_inverse()
+
 	if event is InputEventMouseMotion:
 		var mm: InputEventMouseMotion = event
-		_update_drag(mm.position)
+		_update_drag(to_canvas * mm.position)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag:
 		var sd: InputEventScreenDrag = event
 		_is_touch_drag = true
-		_update_drag(sd.position)
+		_update_drag(to_canvas * sd.position)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event
 		if mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
-			_finish_drag(mb.position)
+			_finish_drag(to_canvas * mb.position)
 			get_viewport().set_input_as_handled()
 	elif event is InputEventScreenTouch:
 		var st: InputEventScreenTouch = event
 		if not st.pressed:
-			_finish_drag(st.position)
+			_finish_drag(to_canvas * st.position)
 			get_viewport().set_input_as_handled()
 
 

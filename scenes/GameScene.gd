@@ -17,6 +17,8 @@ var session_ended: bool = false
 var is_paused: bool = false
 
 var _revive_used: bool = false
+# Revive öncesi Game Over'da ödülü verilmiş skor (aynı puanlar iki kez ödüllendirilmesin)
+var _rewarded_score: int = 0
 var _next_booster_score: int = 1500
 var _run_initial_best: int = 0
 var _new_best_announced: bool = false
@@ -74,7 +76,11 @@ func _ready() -> void:
 func _ensure_camera2d() -> void:
 	var cam := Camera2D.new()
 	cam.name = "GameCamera2D"
-	cam.position = Vector2(360.0, 640.0)
+	# Sol üst köşeye sabitle: farklı ekran oranlarında (uzun telefonlar, tablet)
+	# arayüz kaymasın ve dokunma koordinatları çizimle aynı kalsın.
+	# Sarsıntı efekti sadece cam.offset ile çalışır.
+	cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT
+	cam.position = Vector2.ZERO
 	cam.enabled = true
 	add_child(cam)
 
@@ -322,6 +328,7 @@ func _start_configured_level(clear_save: bool = true) -> void:
 	session_ended = false
 	is_paused = false
 	_revive_used = false
+	_rewarded_score = 0
 	_stuck_offer_active = false
 	_btn_give_up.visible = false
 	_next_booster_score = 1500
@@ -372,7 +379,9 @@ func save_current_progress() -> void:
 	var payload: Dictionary = {
 		"mode": int(GameState.active_mode),
 		"stage": GameState.selected_stage,
+		"day_key": GameState.get_today_key(),
 		"score": current_score,
+		"rewarded_score": _rewarded_score,
 		"best_score": maxi(_run_initial_best, current_score),
 		"broken_obstacles": broken_obstacles,
 		"combo_streak": grid_board.streak_count,
@@ -402,6 +411,9 @@ func _try_resume_saved_run() -> bool:
 		return false
 	if GameState.active_mode == GameState.PlayMode.CAMPAIGN and saved_stage != GameState.selected_stage:
 		return false
+	# Dünün Günlük Mozaik tahtası bugünün bulmacasının üstüne yüklenmesin.
+	if GameState.active_mode == GameState.PlayMode.DAILY_MOSAIC and str(data.get("day_key", "")) != GameState.get_today_key():
+		return false
 
 	_start_configured_level(false)
 	current_score = maxi(0, int(data.get("score", 0)))
@@ -410,6 +422,7 @@ func _try_resume_saved_run() -> bool:
 	broken_obstacles = maxi(0, int(data.get("broken_obstacles", 0)))
 	_next_booster_score = maxi(1500, int(data.get("next_booster_score", 1500)))
 	_revive_used = bool(data.get("revive_used", false))
+	_rewarded_score = clampi(int(data.get("rewarded_score", 0)), 0, current_score)
 	_new_best_announced = (_run_initial_best > 0 and current_score > _run_initial_best)
 
 	var occ: Variant = data.get("occupied_cells", [])
@@ -423,11 +436,8 @@ func _try_resume_saved_run() -> bool:
 	if typeof(saved_tray) == TYPE_ARRAY and not (saved_tray as Array).is_empty():
 		piece_tray.import_tray_slots(saved_tray)
 
-	GameState.restore_booster_counts(
-		int(data.get("hammer", GameState.get_booster_count("hammer"))),
-		int(data.get("rotate", GameState.get_booster_count("rotate"))),
-		int(data.get("refresh", GameState.get_booster_count("refresh")))
-	)
+	# Not: Güçlendirici sayıları zaten GameState kaydında tutuluyor. Burada eski
+	# değerleri geri yüklemek, oyun dışında satın alınan/kazanılanları siliyordu.
 	_sync_economy_ui()
 	_refresh_hud()
 	show_status("Kaldığın yerden devam!", Color("#34D399"))
@@ -878,11 +888,12 @@ func _trigger_game_over() -> void:
 
 	var res: Dictionary = {}
 	if GameState.active_mode == GameState.PlayMode.MODE_NORMAL_ENDLESS:
-		res = GameState.record_endless_run(current_score, false)
+		res = GameState.record_endless_run(current_score, false, _rewarded_score)
 	elif GameState.active_mode == GameState.PlayMode.MODE_SPECIAL_ENDLESS:
-		res = GameState.record_endless_run(current_score, true)
+		res = GameState.record_endless_run(current_score, true, _rewarded_score)
 	else:
-		res = GameState.record_failed_attempt_points(current_score)
+		res = GameState.record_failed_attempt_points(current_score, _rewarded_score)
+	_rewarded_score = current_score
 
 	var lp_gain: int = int(res.get("league_gain", 0))
 	var coin_gain: int = int(res.get("coin_gain", 0))
