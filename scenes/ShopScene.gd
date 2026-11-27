@@ -38,7 +38,7 @@ func _rebuild_shop() -> void:
 	var top_bar := HBoxContainer.new()
 	top_bar.add_theme_constant_override("separation", 12)
 
-	var back_btn := ThemeManager.make_button("← GERİ", 18, "stone")
+	var back_btn := ThemeManager.make_button("GERİ", 18, "stone", 14, "back")
 	back_btn.custom_minimum_size = Vector2(118, 52)
 	back_btn.pressed.connect(func() -> void:
 		AudioManager.play_sfx("ui_click")
@@ -50,14 +50,18 @@ func _rebuild_shop() -> void:
 	)
 	top_bar.add_child(back_btn)
 
-	var title_lbl := ThemeManager.make_label("PAZAR", 28, "gold_light", true)
+	var title_lbl := ThemeManager.make_title("PAZAR", 34, "gold_light", true)
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_bar.add_child(title_lbl)
 
 	var coin_pill := ThemeManager.make_card_panel(true, 14, 8)
 	coin_pill.custom_minimum_size = Vector2(140, 52)
-	var coin_lbl := ThemeManager.make_label("🪙 %d" % GameState.coins, 22, "gold_light", true)
-	coin_pill.add_child(coin_lbl)
+	var coin_lbl := ThemeManager.make_label(str(GameState.coins), 22, "gold_light", true)
+	var cp_hb := HBoxContainer.new()
+	cp_hb.add_theme_constant_override("separation", 6)
+	cp_hb.add_child(ThemeManager.make_icon("coin", 24, Color.WHITE))
+	cp_hb.add_child(coin_lbl)
+	coin_pill.add_child(cp_hb)
 	top_bar.add_child(coin_pill)
 	_main_vbox.add_child(top_bar)
 
@@ -80,7 +84,7 @@ func _rebuild_shop() -> void:
 	var na_hb := HBoxContainer.new()
 	na_hb.add_theme_constant_override("separation", 14)
 
-	var na_icon := ThemeManager.make_label("🚫", 38, "gold_light", true)
+	var na_icon := ThemeManager.make_icon("noads", 44, "gold_light")
 	na_icon.custom_minimum_size = Vector2(56, 0)
 	na_hb.add_child(na_icon)
 
@@ -92,7 +96,7 @@ func _rebuild_shop() -> void:
 	na_hb.add_child(na_vb)
 
 	if GameState.no_ads:
-		var badge := ThemeManager.make_button("✓ AKTİF", 19, "emerald")
+		var badge := ThemeManager.make_button("AKTİF", 19, "emerald", 14, "check")
 		badge.disabled = true
 		badge.custom_minimum_size = Vector2(150, 56)
 		na_hb.add_child(badge)
@@ -114,17 +118,17 @@ func _rebuild_shop() -> void:
 
 	var boost_row := HBoxContainer.new()
 	boost_row.add_theme_constant_override("separation", 10)
-	boost_row.add_child(_make_booster_card("hammer", "🔨", "ÇEKİÇ"))
-	boost_row.add_child(_make_booster_card("rotate", "⟳", "DÖNDÜR"))
-	boost_row.add_child(_make_booster_card("refresh", "🔄", "YENİLE"))
-	boost_row.add_child(_make_booster_card("bomb", "💣", "BOMBA"))
+	boost_row.add_child(_make_booster_card("hammer", "hammer", "ÇEKİÇ"))
+	boost_row.add_child(_make_booster_card("rotate", "rotate", "DÖNDÜR"))
+	boost_row.add_child(_make_booster_card("refresh", "refresh", "YENİLE"))
+	boost_row.add_child(_make_booster_card("bomb", "bomb", "BOMBA"))
 	content_vb.add_child(boost_row)
 
 	# Ödüllü reklamla ücretsiz güçlendirici (günde sınırlı)
 	var ads_left: int = AdManager.get_shop_rewarded_left()
 	var free_btn := ThemeManager.make_button(
-		("🎬 REKLAM İZLE · ÜCRETSİZ GÜÇLENDİRİCİ  (%d/%d)" % [ads_left, AdManager.DAILY_SHOP_REWARDED_LIMIT]) if ads_left > 0 else "🎬 BUGÜNLÜK BİTTİ · YARIN GEL",
-		17, "emerald" if ads_left > 0 else "stone"
+		("REKLAM İZLE · ÜCRETSİZ GÜÇLENDİRİCİ  (%d/%d)" % [ads_left, AdManager.DAILY_SHOP_REWARDED_LIMIT]) if ads_left > 0 else "BUGÜNLÜK BİTTİ · YARIN GEL",
+		17, "emerald" if ads_left > 0 else "stone", 14, "video"
 	)
 	free_btn.custom_minimum_size = Vector2(0, 58)
 	free_btn.disabled = ads_left <= 0
@@ -164,11 +168,13 @@ func _make_booster_card(booster_id: String, icon_str: String, short_name: String
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_theme_constant_override("separation", 8)
 
-	vb.add_child(ThemeManager.make_label(icon_str, 36, "gold_light", true))
+	var b_ic := ThemeManager.make_icon(icon_str, 40, "gold_light")
+	b_ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	vb.add_child(b_ic)
 	vb.add_child(ThemeManager.make_label(short_name, 18, "text_main", true))
 	vb.add_child(ThemeManager.make_label("x%d" % owned, 22, "gold_light", true))
 
-	var buy_btn := ThemeManager.make_button("🪙 %d" % cost, 18, "gold" if can_afford else "stone")
+	var buy_btn := ThemeManager.make_button("%d" % cost, 18, "gold" if can_afford else "stone", 14, "coin")
 	buy_btn.custom_minimum_size = Vector2(0, 50)
 	buy_btn.disabled = not can_afford
 	buy_btn.pressed.connect(func() -> void:
@@ -213,7 +219,7 @@ func _make_theme_card(theme_id: String) -> PanelContainer:
 	hb.add_child(name_lbl)
 
 	if equipped:
-		var eq_btn := ThemeManager.make_button("✓ AKTİF", 17, "emerald")
+		var eq_btn := ThemeManager.make_button("AKTİF", 17, "emerald", 14, "check")
 		eq_btn.disabled = true
 		eq_btn.custom_minimum_size = Vector2(146, 50)
 		hb.add_child(eq_btn)
@@ -227,7 +233,7 @@ func _make_theme_card(theme_id: String) -> PanelContainer:
 		hb.add_child(use_btn)
 	else:
 		var can_buy: bool = (GameState.coins >= cost)
-		var unlock_btn := ThemeManager.make_button("🪙 %d" % cost, 18, "amber_solid" if can_buy else "stone")
+		var unlock_btn := ThemeManager.make_button("%d" % cost, 18, "amber_solid" if can_buy else "stone", 14, "coin")
 		unlock_btn.disabled = not can_buy
 		unlock_btn.custom_minimum_size = Vector2(146, 50)
 		unlock_btn.pressed.connect(func() -> void:

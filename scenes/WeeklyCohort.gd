@@ -32,7 +32,7 @@ func _build_ui() -> void:
 	var top_bar := HBoxContainer.new()
 	top_bar.add_theme_constant_override("separation", 10)
 
-	var back_btn := ThemeManager.make_button("←", 22, "stone")
+	var back_btn := ThemeManager.make_button("", 22, "stone", 14, "back")
 	back_btn.custom_minimum_size = Vector2(72, 52)
 	back_btn.pressed.connect(func() -> void:
 		AudioManager.play_sfx("ui_click")
@@ -40,12 +40,16 @@ func _build_ui() -> void:
 	)
 	top_bar.add_child(back_btn)
 
-	var title_lbl := ThemeManager.make_label("LİG", 28, "gold_light", true)
+	var title_lbl := ThemeManager.make_title("LİG", 34, "gold_light", true)
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_bar.add_child(title_lbl)
 
 	var timer_pill := ThemeManager.make_card_panel(false, 12, 8)
-	timer_pill.add_child(ThemeManager.make_label("⏳ " + GameState.get_week_remaining_label(), 18, "gold_light", true))
+	var tp_hb := HBoxContainer.new()
+	tp_hb.add_theme_constant_override("separation", 6)
+	tp_hb.add_child(ThemeManager.make_icon("clock", 20, "gold_light"))
+	tp_hb.add_child(ThemeManager.make_label(GameState.get_week_remaining_label(), 18, "gold_light", true))
+	timer_pill.add_child(tp_hb)
 	top_bar.add_child(timer_pill)
 	main_vbox.add_child(top_bar)
 
@@ -92,7 +96,7 @@ func _build_ui() -> void:
 	main_vbox.add_child(scroll)
 
 	# Oyna Butonu
-	var play_btn := ThemeManager.make_button("▶ OYNA", 22, "gold")
+	var play_btn := ThemeManager.make_button("OYNA", 22, "gold", 14, "play")
 	play_btn.custom_minimum_size = Vector2(0, 62)
 	play_btn.pressed.connect(func() -> void:
 		AudioManager.play_sfx("ui_click")

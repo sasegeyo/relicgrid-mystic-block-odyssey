@@ -534,7 +534,7 @@ func _draw() -> void:
 			(srect.size.x - 24.0) / float(maxi(1, max_dim)),
 			(srect.size.y - 24.0) / float(maxi(1, max_dim))
 		)
-		fit_cell = clampf(fit_cell, 16.0, 34.0) * _slot_spawn_scales[i]
+		fit_cell = clampf(fit_cell, 18.0, 46.0) * _slot_spawn_scales[i]
 
 		var draw_center: Vector2 = srect.get_center()
 		if i == _return_anim_slot and _return_anim_t < 1.0:

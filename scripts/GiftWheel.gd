@@ -6,14 +6,14 @@ extends Control
 signal closed
 
 const SEGMENTS: Array = [
-	{"type": "coins", "amount": 25, "label": "🪙 25", "weight": 22, "color": Color("#1F5C46")},
-	{"type": "booster", "id": "hammer", "amount": 1, "label": "🔨", "weight": 14, "color": Color("#6B4A1A")},
-	{"type": "coins", "amount": 50, "label": "🪙 50", "weight": 18, "color": Color("#245E6B")},
-	{"type": "booster", "id": "rotate", "amount": 1, "label": "⟳", "weight": 12, "color": Color("#4B2A6B")},
-	{"type": "coins", "amount": 100, "label": "🪙 100", "weight": 10, "color": Color("#1F5C46")},
-	{"type": "booster", "id": "refresh", "amount": 1, "label": "🔄", "weight": 14, "color": Color("#6B4A1A")},
-	{"type": "booster", "id": "bomb", "amount": 1, "label": "💣", "weight": 6, "color": Color("#6B1F2A")},
-	{"type": "coins", "amount": 250, "label": "🪙 250", "weight": 4, "color": Color("#8A6A12")}
+	{"type": "coins", "amount": 25, "label": "25", "sub": "ALTIN", "weight": 22, "color": Color("#116B4C")},
+	{"type": "booster", "id": "hammer", "amount": 1, "label": "ÇEKİÇ", "sub": "x1", "weight": 14, "color": Color("#B45309")},
+	{"type": "coins", "amount": 50, "label": "50", "sub": "ALTIN", "weight": 18, "color": Color("#1D4ED8")},
+	{"type": "booster", "id": "rotate", "amount": 1, "label": "DÖNDÜR", "sub": "x1", "weight": 12, "color": Color("#6326C9")},
+	{"type": "coins", "amount": 100, "label": "100", "sub": "ALTIN", "weight": 10, "color": Color("#116B4C")},
+	{"type": "booster", "id": "refresh", "amount": 1, "label": "YENİLE", "sub": "x1", "weight": 14, "color": Color("#B45309")},
+	{"type": "booster", "id": "bomb", "amount": 1, "label": "BOMBA", "sub": "x1", "weight": 6, "color": Color("#B91C1C")},
+	{"type": "coins", "amount": 250, "label": "250", "sub": "BÜYÜK ÖDÜL", "weight": 4, "color": Color("#D97706")}
 ]
 
 var _wheel: Control
@@ -30,7 +30,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.05, 0.04, 0.9)
+	bg.color = Color(0.02, 0.043, 0.031, 0.94)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -43,22 +43,22 @@ func _ready() -> void:
 	vb.add_theme_constant_override("separation", 22)
 	center.add_child(vb)
 
-	_title_lbl = ThemeManager.make_label("🎁 HEDİYE ÇARKI", 34, "gold_light", true)
+	_title_lbl = ThemeManager.make_title("HEDİYE ÇARKI", 52, "gold_light", true)
 	vb.add_child(_title_lbl)
 
 	var wheel_holder := Control.new()
-	wheel_holder.custom_minimum_size = Vector2(440, 470)
+	wheel_holder.custom_minimum_size = Vector2(560, 600)
 	vb.add_child(wheel_holder)
 
 	_wheel = Control.new()
-	_wheel.size = Vector2(440, 440)
-	_wheel.position = Vector2(0, 30)
+	_wheel.size = Vector2(560, 560)
+	_wheel.position = Vector2(0, 36)
 	_wheel.pivot_offset = _wheel.size * 0.5
 	_wheel.draw.connect(_draw_wheel)
 	wheel_holder.add_child(_wheel)
 
 	var pointer := Control.new()
-	pointer.size = Vector2(440, 40)
+	pointer.size = Vector2(560, 48)
 	pointer.draw.connect(func() -> void:
 		var cx: float = pointer.size.x * 0.5
 		pointer.draw_colored_polygon(PackedVector2Array([
@@ -70,11 +70,11 @@ func _ready() -> void:
 	)
 	wheel_holder.add_child(pointer)
 
-	_result_lbl = ThemeManager.make_label("Reklam için teşekkürler! Çarkı çevir.", 20, "text_main", true)
+	_result_lbl = ThemeManager.make_label("Reklam için teşekkürler. Çevir, kazan.", 24, "text_dim", true)
 	vb.add_child(_result_lbl)
 
-	_spin_btn = ThemeManager.make_button("ÇEVİR!", 26, "amber_solid")
-	_spin_btn.custom_minimum_size = Vector2(320, 68)
+	_spin_btn = ThemeManager.make_button("ÇEVİR", 34, "amber_solid", 18, "gift")
+	_spin_btn.custom_minimum_size = Vector2(560, 104)
 	_spin_btn.pressed.connect(_on_button)
 	vb.add_child(_spin_btn)
 
@@ -150,9 +150,10 @@ func _draw_wheel() -> void:
 	var c: Vector2 = _wheel.size * 0.5
 	var radius: float = _wheel.size.x * 0.5 - 6.0
 	var step: float = TAU / float(SEGMENTS.size())
-	var font: Font = ThemeDB.fallback_font
+	var font: Font = ThemeManager.font_body if ThemeManager.font_body != null else ThemeDB.fallback_font
 
-	_wheel.draw_circle(c, radius + 6.0, Color("#F59E0B"))
+	_wheel.draw_circle(c, radius + 14.0, Color("#0B1612"))
+	_wheel.draw_circle(c, radius + 8.0, Color("#F59E0B"))
 	for i in range(SEGMENTS.size()):
 		# 0 açı yukarı bakacak şekilde (-PI/2 kaydırma)
 		var a0: float = float(i) * step - PI * 0.5
@@ -168,8 +169,10 @@ func _draw_wheel() -> void:
 			var mid: float = a0 + step * 0.5
 			var lp: Vector2 = c + Vector2(cos(mid), sin(mid)) * radius * 0.64
 			_wheel.draw_set_transform(lp, mid + PI * 0.5, Vector2.ONE)
-			_wheel.draw_string(font, Vector2(-60, 9), str(SEGMENTS[i]["label"]), HORIZONTAL_ALIGNMENT_CENTER, 120, 24, Color("#F3EFE6"))
+			_wheel.draw_string(font, Vector2(-70, 4), str(SEGMENTS[i]["label"]), HORIZONTAL_ALIGNMENT_CENTER, 140, 26, Color("#F3EFE6"))
+			_wheel.draw_string(font, Vector2(-70, 26), str(SEGMENTS[i]["sub"]), HORIZONTAL_ALIGNMENT_CENTER, 140, 16, Color("#E6F2EC"))
 			_wheel.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	_wheel.draw_circle(c, 34.0, Color("#06100C"))
-	_wheel.draw_circle(c, 28.0, Color("#F59E0B"))
+	_wheel.draw_circle(c, 40.0, Color("#362508"))
+	_wheel.draw_circle(c, 33.0, Color("#B45309"))
+	_wheel.draw_circle(c, 29.0, Color("#F59E0B"))

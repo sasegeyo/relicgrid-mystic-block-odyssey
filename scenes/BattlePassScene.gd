@@ -1,7 +1,8 @@
 extends Control
 ## Sezon (Battle Pass) ekranı: kademe ilerlemesi, Ücretsiz + Premium ödül yolları.
 
-const BOOSTER_ICONS: Dictionary = {"hammer": "🔨", "rotate": "⟳", "refresh": "🔄", "bomb": "💣"}
+const BOOSTER_NAMES: Dictionary = {"hammer": "Çekiç", "rotate": "Döndür", "refresh": "Yenile", "bomb": "Bomba"}
+const BOOSTER_ICON: Dictionary = {"hammer": "hammer", "rotate": "rotate", "refresh": "refresh", "bomb": "bomb"}
 
 var _bg_rect: ColorRect
 var _tier_lbl: Label
@@ -36,7 +37,7 @@ func _build_ui() -> void:
 	var top_bar := HBoxContainer.new()
 	top_bar.add_theme_constant_override("separation", 10)
 
-	var back_btn := ThemeManager.make_button("←", 22, "stone")
+	var back_btn := ThemeManager.make_button("", 22, "stone", 14, "back")
 	back_btn.custom_minimum_size = Vector2(72, 52)
 	back_btn.pressed.connect(func() -> void:
 		AudioManager.play_ui_click()
@@ -44,12 +45,16 @@ func _build_ui() -> void:
 	)
 	top_bar.add_child(back_btn)
 
-	var title_lbl := ThemeManager.make_label("SEZON %d" % (BattlePass.season_id % 1000 + 1), 28, "gold_light", true)
+	var title_lbl := ThemeManager.make_title("SEZON %d" % (BattlePass.season_id % 1000 + 1), 34, "gold_light", true)
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_bar.add_child(title_lbl)
 
 	var timer_pill := ThemeManager.make_card_panel(false, 12, 8)
-	timer_pill.add_child(ThemeManager.make_label("⏳ %dG" % BattlePass.get_days_left(), 18, "gold_light", true))
+	var tp_hb := HBoxContainer.new()
+	tp_hb.add_theme_constant_override("separation", 6)
+	tp_hb.add_child(ThemeManager.make_icon("clock", 20, "gold_light"))
+	tp_hb.add_child(ThemeManager.make_label("%d gün" % BattlePass.get_days_left(), 18, "gold_light", true))
+	timer_pill.add_child(tp_hb)
 	top_bar.add_child(timer_pill)
 	main_vbox.add_child(top_bar)
 
@@ -126,10 +131,12 @@ func _refresh() -> void:
 	_xp_bar.value = BattlePass.get_xp_into_tier()
 
 	if BattlePass.premium:
-		_premium_btn.text = "✓ PREMIUM AKTİF"
+		_premium_btn.text = "PREMIUM AKTİF"
+		_premium_btn.icon = ThemeManager.get_icon("check")
 		_premium_btn.disabled = true
 	else:
-		_premium_btn.text = "★ PREMIUM AÇ"
+		_premium_btn.text = "PREMIUM AÇ"
+		_premium_btn.icon = ThemeManager.get_icon("star")
 		_premium_btn.disabled = false
 
 	for ch in _rows_vbox.get_children():
@@ -166,16 +173,17 @@ func _create_reward_cell(t: int, is_premium_track: bool) -> Button:
 	var label: String = _describe_reward(reward)
 	var variant: String = "stone"
 	var disabled: bool = true
+	var icon_name: String = _reward_icon(reward)
 
 	if BattlePass.is_claimed(t, is_premium_track):
-		label = "✓  " + label
+		icon_name = "check"
 	elif BattlePass.can_claim(t, is_premium_track):
 		variant = "gold" if not is_premium_track else "amber_solid"
 		disabled = false
 	elif is_premium_track and not BattlePass.premium:
-		label = "🔒  " + label
+		icon_name = "lock"
 
-	var btn := ThemeManager.make_button(label, 17, variant, 10)
+	var btn := ThemeManager.make_button(label, 17, variant, 10, icon_name)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.custom_minimum_size = Vector2(0, 52)
 	btn.disabled = disabled
@@ -189,14 +197,25 @@ func _create_reward_cell(t: int, is_premium_track: bool) -> Button:
 func _describe_reward(reward: Dictionary) -> String:
 	match str(reward.get("type", "")):
 		"coins":
-			return "🪙 %d" % int(reward.get("amount", 0))
+			return "%d altın" % int(reward.get("amount", 0))
 		"booster":
 			var bid: String = str(reward.get("id", ""))
-			return "%s x%d" % [str(BOOSTER_ICONS.get(bid, "?")), int(reward.get("amount", 1))]
+			return "%s x%d" % [str(BOOSTER_NAMES.get(bid, "?")), int(reward.get("amount", 1))]
 		"theme":
 			var t_data: Dictionary = ThemeManager.get_theme_data(str(reward.get("id", "")))
-			return "🎨 " + str(t_data.get("name", "TEMA")).to_upper()
+			return str(t_data.get("name", "Tema"))
 	return "?"
+
+
+func _reward_icon(reward: Dictionary) -> String:
+	match str(reward.get("type", "")):
+		"coins":
+			return "coin"
+		"booster":
+			return str(BOOSTER_ICON.get(str(reward.get("id", "")), "gift"))
+		"theme":
+			return "palette"
+	return "gift"
 
 
 func _scroll_to_current_tier() -> void:

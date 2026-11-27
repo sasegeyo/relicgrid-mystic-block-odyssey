@@ -949,7 +949,7 @@ func place_piece(piece_data: Dictionary, anchor: Vector2i) -> Dictionary:
 			JuicyEffectsManager.shake(shake_amt, 0.24)
 		_spawn_floating_text("+%d" % total_gained, anchor_center, COLOR_GOLD_GLOW, 28)
 		if special_runes_cleared > 0:
-			_spawn_floating_text("✦ +%d" % (special_runes_cleared * 250), anchor_center + Vector2(0, 30), COLOR_GOLD_GLOW, 22)
+			_spawn_floating_text("RÜN +%d" % (special_runes_cleared * 250), anchor_center + Vector2(0, 30), COLOR_GOLD_GLOW, 22)
 	else:
 		_spawn_floating_text("+%d" % total_gained, anchor_center, COLOR_PARCHMENT, 21)
 
