@@ -19,6 +19,8 @@ var is_paused: bool = false
 var _revive_used: bool = false
 ## Oyun sonu ekranında ödüllü teklif (devam et / 2x altın) gösterildi mi, alındı mı?
 var _offer_shown: bool = false
+## Bu oyun günlük görevde 'oyun bitir' olarak sayıldı mı (revive sonrası tekrar sayılmasın)
+var _quest_game_counted: bool = false
 var _offer_taken: bool = false
 # Revive öncesi Game Over'da ödülü verilmiş skor (aynı puanlar iki kez ödüllendirilmesin)
 var _rewarded_score: int = 0
@@ -73,6 +75,7 @@ func _ready() -> void:
 	_ensure_camera2d()
 	_build_layout()
 	GameState.state_updated.connect(_sync_economy_ui)
+	DailyQuests.quest_completed.connect(_on_quest_completed)
 	ThemeManager.theme_changed.connect(_on_theme_changed)
 
 	if not _try_resume_saved_run():
@@ -359,6 +362,7 @@ func _start_configured_level(clear_save: bool = true) -> void:
 	session_ended = false
 	is_paused = false
 	_revive_used = false
+	_quest_game_counted = false
 	_rewarded_score = 0
 	_stuck_offer_active = false
 	_btn_give_up.visible = false
@@ -742,6 +746,43 @@ func _add_double_coins_button(coin_amount: int) -> void:
 	_modal_box.add_child(dbl_btn)
 
 
+## Günlük sonucu Wordle gibi paylaşılabilir metin olarak panoya kopyalar.
+func _make_share_button(stars: int) -> Button:
+	var share_btn := ThemeManager.make_button("SONUCU PAYLAŞ", 22, "purple", 16, "share")
+	share_btn.custom_minimum_size = Vector2(0, 66)
+	share_btn.pressed.connect(func() -> void:
+		DisplayServer.clipboard_set(build_daily_share_text(stars))
+		AudioManager.play_ui_click()
+		share_btn.text = "KOPYALANDI · YAPIŞTIR & GÖNDER"
+		share_btn.icon = ThemeManager.get_icon("check")
+	)
+	return share_btn
+
+
+func build_daily_share_text(stars: int) -> String:
+	var start: int = int(Time.get_unix_time_from_datetime_string("2026-01-01T00:00:00"))
+	var today: int = int(Time.get_unix_time_from_datetime_string(GameState.get_today_key() + "T00:00:00"))
+	var day_no: int = maxi(1, int((today - start) / 86400) + 1)
+	var star_txt: String = ""
+	for i in range(3):
+		star_txt += "⭐" if i < stars else "☆"
+	var week: String = ""
+	var colors: Array = ["🟩", "🟨", "🟪", "🟥", "🟦", "🟩", "🟨"]
+	for i in range(7):
+		week += str(colors[i]) if GameState.mosaic_week_days[i] else "⬛"
+	var lines: Array = [
+		"RelicGrid Günlük #%d" % day_no,
+		"%s  %d puan" % [star_txt, current_score],
+		"🔥 %d günlük seri" % GameState.daily_streak,
+		week,
+	]
+	return "\n".join(lines)
+
+
+func _on_quest_completed(_text: String) -> void:
+	show_status("GÖREV TAMAM!", Color("#34D399"))
+
+
 func _update_record_banner() -> void:
 	if _record_banner == null:
 		return
@@ -813,6 +854,9 @@ func _on_piece_placed(summary: Dictionary) -> void:
 		# Tepsi bittiyse bu bir doğal ara: baskı eşiği geçildiyse geçiş reklamı +
 		# Hediye Çarkı. Rekor Bölgesi'nde ya da büyük kombodan hemen sonra çıkmaz.
 		AdManager.note_lines_cleared(lines_c)
+		DailyQuests.report("lines", lines_c)
+		if lines_c >= 2:
+			DailyQuests.report("combo", 1)
 		if piece_tray.is_tray_empty():
 			AdManager.note_tray_finished()
 			_maybe_mid_game_ad.call_deferred(_record_zone_active or lines_c >= 2 or streak_c >= 3)
@@ -969,12 +1013,21 @@ func _trigger_stage_clear() -> void:
 	_modal_box.add_child(_make_reward_row(int(reward_info.get("coin_gain", 0)), int(reward_info.get("league_gain", 0)), xp_gain))
 	_add_double_coins_button(int(reward_info.get("coin_gain", 0)))
 
+	if not _quest_game_counted:
+		DailyQuests.report("games", 1)
+		_quest_game_counted = true
+	DailyQuests.report("score_game", current_score)
+	if GameState.active_mode == GameState.PlayMode.CAMPAIGN:
+		DailyQuests.report("stage_win", 1)
+
 	if GameState.active_mode == GameState.PlayMode.DAILY_MOSAIC:
+		DailyQuests.report("daily", 1)
 		_modal_box.add_child(ThemeManager.make_label("%d GÜNLÜK SERİ" % GameState.daily_streak, 24, "gold_light", true))
 		_modal_mosaic_strip = Control.new()
 		_modal_mosaic_strip.custom_minimum_size = Vector2(0, 66)
 		_modal_mosaic_strip.draw.connect(_draw_modal_mosaic_board)
 		_modal_box.add_child(_modal_mosaic_strip)
+		_modal_box.add_child(_make_share_button(stars))
 
 	if GameState.active_mode == GameState.PlayMode.CAMPAIGN and int(level_config["stage"]) < 500:
 		var next_stage: int = int(level_config["stage"]) + 1
@@ -1028,6 +1081,10 @@ func _trigger_game_over() -> void:
 		res = GameState.record_failed_attempt_points(current_score, _rewarded_score)
 	var xp_gain: int = BattlePass.award_game_xp(current_score - _rewarded_score, false)
 	_rewarded_score = current_score
+	if not _quest_game_counted:
+		DailyQuests.report("games", 1)
+		_quest_game_counted = true
+	DailyQuests.report("score_game", current_score)
 
 	var lp_gain: int = int(res.get("league_gain", 0))
 	var coin_gain: int = int(res.get("coin_gain", 0))

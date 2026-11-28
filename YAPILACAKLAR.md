@@ -21,6 +21,10 @@ ya da yayına yakın yapılacaklar. Son güncelleme: 28 Kasım 2026.
 - [ ] **Kampanya kayıt çakışması.** Bir bölüm yarıdayken başka bir bölüme
   girilirse önceki bölümün kaydı siliniyor (kampanya tek kayıt yerini paylaşıyor).
 
+- [ ] **Telefonun paylaş menüsü.** "Sonucu paylaş" şu an metni panoya
+  kopyalıyor. Telefonda doğrudan WhatsApp/Instagram paylaş menüsünü açmak için
+  Android/iOS paylaşım eklentisi gerekiyor.
+
 ## Temizlik
 
 - [ ] **Lig rakipleri sahte.** Haftalık ligdeki rakipler simülasyon. Başlangıç

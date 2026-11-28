@@ -4,6 +4,8 @@ extends Control
 
 const DAY_LETTERS: Array = ["P", "S", "Ç", "P", "C", "C", "P"]
 
+const QuestsPanelScript := preload("res://scripts/QuestsPanel.gd")
+
 var _time_acc: float = 0.0
 var _backdrop_canvas: Control
 var _mosaic_strip: Control
@@ -63,6 +65,19 @@ func _rebuild_menu() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_bar.add_child(spacer)
+
+	var quest_btn := ThemeManager.make_button("", 24, "emerald", 18, "quest")
+	quest_btn.custom_minimum_size = Vector2(76, 72)
+	quest_btn.pressed.connect(func() -> void:
+		AudioManager.play_sfx("ui_click")
+		var panel: Control = QuestsPanelScript.new()
+		panel.closed.connect(func() -> void: _rebuild_menu.call_deferred())
+		add_child(panel)
+	)
+	var quest_left: int = DailyQuests.get_claimable_count()
+	if quest_left > 0:
+		quest_btn.add_child(_make_badge(quest_left))
+	top_bar.add_child(quest_btn)
 
 	var shop_btn := ThemeManager.make_button("Pazar", 24, "amber_solid", 18, "shop")
 	shop_btn.custom_minimum_size = Vector2(0, 72)

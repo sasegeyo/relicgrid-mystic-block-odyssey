@@ -102,6 +102,19 @@ func award_game_xp(reward_score: int, won: bool, stars: int = 0, first_daily: bo
 	return gained
 
 
+## Görev gibi oyun dışı kaynaklardan gelen XP.
+func add_bonus_xp(amount: int) -> void:
+	if amount <= 0:
+		return
+	_sync_season()
+	var before_tier: int = get_tier()
+	xp = mini(xp + amount, TIER_COUNT * XP_PER_TIER)
+	_save()
+	pass_updated.emit()
+	if get_tier() > before_tier:
+		AudioManager.play_new_best()
+
+
 # --- ÖDÜLLER ---
 
 ## Ücretsiz yolda özel ödül tanımlı olmayan kademeler artan altın verir.

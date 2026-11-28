@@ -26,6 +26,7 @@ ThemeManager="*res://autoload/ThemeManager.gd"
 AudioManager="*res://autoload/AudioManager.gd"
 AdManager="*res://autoload/AdManager.gd"
 BattlePass="*res://autoload/BattlePass.gd"
+DailyQuests="*res://autoload/DailyQuests.gd"
 JuicyEffectsManager="*res://autoload/JuicyEffectsManager.gd"
 BoardSaveManager="*res://autoload/BoardSaveManager.gd"
 

@@ -246,6 +246,7 @@ func consume_booster(booster_id: String) -> bool:
 	boosters[booster_id] = cur - 1
 	save_game()
 	state_updated.emit()
+	DailyQuests.report("booster", 1)
 	return true
 
 
