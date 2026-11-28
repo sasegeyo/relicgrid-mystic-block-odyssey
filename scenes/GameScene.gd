@@ -17,9 +17,19 @@ var session_ended: bool = false
 var is_paused: bool = false
 
 var _revive_used: bool = false
+## Oyun sonu ekranında ödüllü teklif (devam et / 2x altın) gösterildi mi, alındı mı?
+var _offer_shown: bool = false
+## Bu oyun günlük görevde 'oyun bitir' olarak sayıldı mı (revive sonrası tekrar sayılmasın)
+var _quest_game_counted: bool = false
+var _offer_taken: bool = false
+# Revive öncesi Game Over'da ödülü verilmiş skor (aynı puanlar iki kez ödüllendirilmesin)
+var _rewarded_score: int = 0
 var _next_booster_score: int = 1500
 var _run_initial_best: int = 0
 var _new_best_announced: bool = false
+var _record_zone_active: bool = false
+var _record_banner: PanelContainer
+var _record_banner_lbl: Label
 var _stuck_offer_active: bool = false
 
 var grid_board: GridBoard
@@ -65,6 +75,7 @@ func _ready() -> void:
 	_ensure_camera2d()
 	_build_layout()
 	GameState.state_updated.connect(_sync_economy_ui)
+	DailyQuests.quest_completed.connect(_on_quest_completed)
 	ThemeManager.theme_changed.connect(_on_theme_changed)
 
 	if not _try_resume_saved_run():
@@ -74,7 +85,11 @@ func _ready() -> void:
 func _ensure_camera2d() -> void:
 	var cam := Camera2D.new()
 	cam.name = "GameCamera2D"
-	cam.position = Vector2(360.0, 640.0)
+	# Sol üst köşeye sabitle: farklı ekran oranlarında (uzun telefonlar, tablet)
+	# arayüz kaymasın ve dokunma koordinatları çizimle aynı kalsın.
+	# Sarsıntı efekti sadece cam.offset ile çalışır.
+	cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT
+	cam.position = Vector2.ZERO
 	cam.enabled = true
 	add_child(cam)
 
@@ -83,10 +98,13 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
 		if not session_ended and grid_board != null and piece_tray != null:
 			save_current_progress()
+		AdManager.note_session_interrupted()
 
 
 func _process(delta: float) -> void:
 	_modal_pulse += delta
+	if _is_actively_playing():
+		AdManager.add_play_time(delta)
 	if absf(displayed_score - float(current_score)) > 0.4:
 		displayed_score = lerpf(displayed_score, float(current_score), clampf(delta * 12.0, 0.0, 1.0))
 		if absf(displayed_score - float(current_score)) < 1.0:
@@ -118,27 +136,26 @@ func _build_layout() -> void:
 	var top_bar := HBoxContainer.new()
 	top_bar.add_theme_constant_override("separation", 8)
 
-	var pause_btn := ThemeManager.make_button("II", 20, "stone")
-	pause_btn.custom_minimum_size = Vector2(56, 46)
+	var pause_btn := ThemeManager.make_button("", 20, "stone", 14, "pause")
+	pause_btn.custom_minimum_size = Vector2(64, 60)
 	pause_btn.pressed.connect(toggle_pause)
 	top_bar.add_child(pause_btn)
 
-	_title_lbl = ThemeManager.make_label("BÖLÜM 1", 23, "gold_light", true)
+	_title_lbl = ThemeManager.make_title("BÖLÜM 1", 32, "gold_light", false)
 	_title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_bar.add_child(_title_lbl)
 
-	var coin_pill := ThemeManager.make_card_panel(true, 10, 5)
-	_coin_lbl = ThemeManager.make_label("🪙 %d" % GameState.coins, 18, "gold_light", true)
-	coin_pill.add_child(_coin_lbl)
-	top_bar.add_child(coin_pill)
+	var coin_info: Dictionary = ThemeManager.make_coin_pill(GameState.coins, 24)
+	_coin_lbl = coin_info["label"]
+	top_bar.add_child(coin_info["panel"])
 
-	var shop_btn := ThemeManager.make_button("🛒", 19, "amber_solid")
-	shop_btn.custom_minimum_size = Vector2(52, 46)
+	var shop_btn := ThemeManager.make_button("", 20, "amber_solid", 14, "shop")
+	shop_btn.custom_minimum_size = Vector2(64, 60)
 	shop_btn.pressed.connect(_open_shop_overlay)
 	top_bar.add_child(shop_btn)
 
-	_sound_btn = ThemeManager.make_button("✕" if AudioManager.sound_muted else "♪", 19, "stone")
-	_sound_btn.custom_minimum_size = Vector2(50, 46)
+	_sound_btn = ThemeManager.make_button("", 20, "stone", 14, "mute" if AudioManager.sound_muted else "sound")
+	_sound_btn.custom_minimum_size = Vector2(64, 60)
 	_sound_btn.pressed.connect(toggle_sound)
 	top_bar.add_child(_sound_btn)
 	root_vbox.add_child(top_bar)
@@ -153,24 +170,24 @@ func _build_layout() -> void:
 
 	var col1 := VBoxContainer.new()
 	col1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col1.add_child(ThemeManager.make_label("SKOR", 12, "text_dim", true))
-	_score_val_lbl = ThemeManager.make_label("0", 28, "gold_light", true)
+	col1.add_child(ThemeManager.make_label("SKOR", 16, "text_dim", true))
+	_score_val_lbl = ThemeManager.make_label("0", 46, "gold_light", true)
 	col1.add_child(_score_val_lbl)
 	metrics_row.add_child(col1)
 
 	var col2 := VBoxContainer.new()
 	col2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_mid_cap_lbl = ThemeManager.make_label("HEDEF", 12, "text_dim", true)
+	_mid_cap_lbl = ThemeManager.make_label("HEDEF", 16, "text_dim", true)
 	col2.add_child(_mid_cap_lbl)
-	_mid_val_lbl = ThemeManager.make_label("0", 24, "text_main", true)
+	_mid_val_lbl = ThemeManager.make_label("0", 32, "text_main", true)
 	col2.add_child(_mid_val_lbl)
 	metrics_row.add_child(col2)
 
 	var col3 := VBoxContainer.new()
 	col3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_right_cap_lbl = ThemeManager.make_label("ENGEL", 12, "text_dim", true)
+	_right_cap_lbl = ThemeManager.make_label("ENGEL", 16, "text_dim", true)
 	col3.add_child(_right_cap_lbl)
-	_right_val_lbl = ThemeManager.make_label("0", 24, Color("#34D399"), true)
+	_right_val_lbl = ThemeManager.make_label("0", 32, Color("#34D399"), true)
 	col3.add_child(_right_val_lbl)
 	metrics_row.add_child(col3)
 	hud_vb.add_child(metrics_row)
@@ -211,6 +228,29 @@ func _build_layout() -> void:
 	root_vbox.add_child(hud_panel)
 
 	# 3) AYRI SİSTEM DURUM BİLDİRİM ALANI (status_label — combo_label'ı asla ezmez)
+	_record_banner = PanelContainer.new()
+	var rb_sb := StyleBoxFlat.new()
+	rb_sb.bg_color = Color("#362508")
+	rb_sb.border_color = Color("#F59E0B")
+	rb_sb.set_border_width_all(3)
+	rb_sb.set_corner_radius_all(16)
+	rb_sb.content_margin_left = 16
+	rb_sb.content_margin_right = 16
+	rb_sb.content_margin_top = 8
+	rb_sb.content_margin_bottom = 8
+	_record_banner.add_theme_stylebox_override("panel", rb_sb)
+	var rb_hb := HBoxContainer.new()
+	rb_hb.add_theme_constant_override("separation", 10)
+	rb_hb.add_child(ThemeManager.make_icon("flame", 26, Color("#FCD34D")))
+	var rb_title := ThemeManager.make_label("REKOR BÖLGESİ", 22, Color("#FEF08A"))
+	rb_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rb_hb.add_child(rb_title)
+	_record_banner_lbl = ThemeManager.make_label("", 20, Color("#FCD34D"))
+	rb_hb.add_child(_record_banner_lbl)
+	_record_banner.add_child(rb_hb)
+	_record_banner.visible = false
+	root_vbox.add_child(_record_banner)
+
 	_status_label = ThemeManager.make_label("", 16, Color("#34D399"), true)
 	_status_label.custom_minimum_size = Vector2(0, 24)
 	_status_label.modulate.a = 0.0
@@ -230,25 +270,25 @@ func _build_layout() -> void:
 	var booster_row := HBoxContainer.new()
 	booster_row.add_theme_constant_override("separation", 8)
 
-	_btn_hammer = ThemeManager.make_button("🔨 x0", 17, "stone")
+	_btn_hammer = ThemeManager.make_button("x0", 24, "stone", 16, "hammer")
 	_btn_hammer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_hammer.custom_minimum_size = Vector2(0, 50)
 	_btn_hammer.pressed.connect(func() -> void: _on_booster_pressed("hammer"))
 	booster_row.add_child(_btn_hammer)
 
-	_btn_rotate = ThemeManager.make_button("⟳ x0", 17, "stone")
+	_btn_rotate = ThemeManager.make_button("x0", 24, "stone", 16, "rotate")
 	_btn_rotate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_rotate.custom_minimum_size = Vector2(0, 50)
 	_btn_rotate.pressed.connect(func() -> void: _on_booster_pressed("rotate"))
 	booster_row.add_child(_btn_rotate)
 
-	_btn_refresh = ThemeManager.make_button("🔄 x0", 17, "stone")
+	_btn_refresh = ThemeManager.make_button("x0", 24, "stone", 16, "refresh")
 	_btn_refresh.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_refresh.custom_minimum_size = Vector2(0, 50)
 	_btn_refresh.pressed.connect(func() -> void: _on_booster_pressed("refresh"))
 	booster_row.add_child(_btn_refresh)
 
-	_btn_bomb = ThemeManager.make_button("💣 x0", 17, "stone")
+	_btn_bomb = ThemeManager.make_button("x0", 24, "stone", 16, "bomb")
 	_btn_bomb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_btn_bomb.custom_minimum_size = Vector2(0, 50)
 	_btn_bomb.pressed.connect(func() -> void: _on_booster_pressed("bomb"))
@@ -275,19 +315,19 @@ func _build_layout() -> void:
 	root_vbox.add_child(piece_tray)
 
 	# 7) REKLAM YER TUTUCU (NO ADS alındığında kalıcı olarak gizlenir)
-	_ad_banner_btn = ThemeManager.make_button("AD  ·  🚫 NO ADS", 13, "stone", 8)
+	_ad_banner_btn = ThemeManager.make_button("REKLAM  ·  NO ADS", 18, "stone", 10, "noads")
 	_ad_banner_btn.custom_minimum_size = Vector2(0, 32)
 	_ad_banner_btn.visible = not GameState.no_ads
 	_ad_banner_btn.pressed.connect(_open_shop_overlay)
 	root_vbox.add_child(_ad_banner_btn)
 
 	# 8) ÜST KOMBO / HYPE POPUP ETİKETİ (combo_label — status_label'dan bağımsız!)
-	_combo_label = ThemeManager.make_label("", 36, "gold_light", true)
+	_combo_label = ThemeManager.make_title("", 56, "gold_light", true)
 	_combo_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_combo_label.offset_left = -280
 	_combo_label.offset_right = 280
-	_combo_label.offset_top = 240
-	_combo_label.offset_bottom = 300
+	_combo_label.offset_top = 470
+	_combo_label.offset_bottom = 560
 	_combo_label.add_theme_color_override("font_outline_color", Color("#06100C"))
 	_combo_label.add_theme_constant_override("outline_size", 8)
 	_combo_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -317,15 +357,19 @@ func _build_layout() -> void:
 
 func _start_configured_level(clear_save: bool = true) -> void:
 	if clear_save:
-		BoardSaveManager.clear_saved_run()
+		BoardSaveManager.clear_saved_run(int(GameState.active_mode))
 
 	session_ended = false
 	is_paused = false
 	_revive_used = false
+	_quest_game_counted = false
+	_rewarded_score = 0
 	_stuck_offer_active = false
 	_btn_give_up.visible = false
 	_next_booster_score = 1500
 	_new_best_announced = false
+	_record_zone_active = false
+	_update_record_banner()
 	_hide_modal()
 
 	match GameState.active_mode:
@@ -372,7 +416,9 @@ func save_current_progress() -> void:
 	var payload: Dictionary = {
 		"mode": int(GameState.active_mode),
 		"stage": GameState.selected_stage,
+		"day_key": GameState.get_today_key(),
 		"score": current_score,
+		"rewarded_score": _rewarded_score,
 		"best_score": maxi(_run_initial_best, current_score),
 		"broken_obstacles": broken_obstacles,
 		"combo_streak": grid_board.streak_count,
@@ -391,9 +437,9 @@ func save_current_progress() -> void:
 
 
 func _try_resume_saved_run() -> bool:
-	if not BoardSaveManager.has_saved_run():
+	if not BoardSaveManager.has_saved_run(int(GameState.active_mode)):
 		return false
-	var data: Dictionary = BoardSaveManager.load_run()
+	var data: Dictionary = BoardSaveManager.load_run(int(GameState.active_mode))
 	if data.is_empty():
 		return false
 	var saved_mode: int = int(data.get("mode", -1))
@@ -401,6 +447,9 @@ func _try_resume_saved_run() -> bool:
 	if saved_mode != int(GameState.active_mode):
 		return false
 	if GameState.active_mode == GameState.PlayMode.CAMPAIGN and saved_stage != GameState.selected_stage:
+		return false
+	# Dünün Günlük Mozaik tahtası bugünün bulmacasının üstüne yüklenmesin.
+	if GameState.active_mode == GameState.PlayMode.DAILY_MOSAIC and str(data.get("day_key", "")) != GameState.get_today_key():
 		return false
 
 	_start_configured_level(false)
@@ -410,7 +459,11 @@ func _try_resume_saved_run() -> bool:
 	broken_obstacles = maxi(0, int(data.get("broken_obstacles", 0)))
 	_next_booster_score = maxi(1500, int(data.get("next_booster_score", 1500)))
 	_revive_used = bool(data.get("revive_used", false))
+	_rewarded_score = clampi(int(data.get("rewarded_score", 0)), 0, current_score)
 	_new_best_announced = (_run_initial_best > 0 and current_score > _run_initial_best)
+	_record_zone_active = _run_initial_best >= 300 and current_score >= int(_run_initial_best * 0.85)
+	piece_tray.record_zone = _record_zone_active
+	_update_record_banner()
 
 	var occ: Variant = data.get("occupied_cells", [])
 	if typeof(occ) == TYPE_ARRAY:
@@ -423,11 +476,8 @@ func _try_resume_saved_run() -> bool:
 	if typeof(saved_tray) == TYPE_ARRAY and not (saved_tray as Array).is_empty():
 		piece_tray.import_tray_slots(saved_tray)
 
-	GameState.restore_booster_counts(
-		int(data.get("hammer", GameState.get_booster_count("hammer"))),
-		int(data.get("rotate", GameState.get_booster_count("rotate"))),
-		int(data.get("refresh", GameState.get_booster_count("refresh")))
-	)
+	# Not: Güçlendirici sayıları zaten GameState kaydında tutuluyor. Burada eski
+	# değerleri geri yüklemek, oyun dışında satın alınan/kazanılanları siliyordu.
 	_sync_economy_ui()
 	_refresh_hud()
 	show_status("Kaldığın yerden devam!", Color("#34D399"))
@@ -494,7 +544,7 @@ func toggle_pause() -> void:
 func toggle_sound() -> void:
 	var sound_on: bool = AudioManager.toggle_sound()
 	if _sound_btn != null:
-		_sound_btn.text = "♪" if sound_on else "✕"
+		_sound_btn.icon = ThemeManager.get_icon("sound" if sound_on else "mute")
 
 
 func toggle_haptics() -> void:
@@ -505,7 +555,7 @@ func toggle_haptics() -> void:
 
 func _sync_economy_ui() -> void:
 	if _coin_lbl != null:
-		_coin_lbl.text = "🪙 %d" % GameState.coins
+		_coin_lbl.text = str(GameState.coins)
 	if _ad_banner_btn != null:
 		_ad_banner_btn.visible = not GameState.no_ads
 	_update_booster_buttons()
@@ -517,19 +567,25 @@ func _update_booster_buttons() -> void:
 
 	if _btn_hammer != null:
 		var hc: int = GameState.get_booster_count("hammer")
-		_btn_hammer.text = ("✕" if active_b == "hammer" else ("🔨 x%d" % hc if hc > 0 else "🔨 +"))
+		_set_booster_btn(_btn_hammer, "hammer", hc, active_b == "hammer")
 		_btn_hammer.modulate = Color(1.0, 0.92, 0.65) if active_b == "hammer" else Color.WHITE
 	if _btn_rotate != null:
 		var rotc: int = GameState.get_booster_count("rotate")
-		_btn_rotate.text = ("✕" if rot_active else ("⟳ x%d" % rotc if rotc > 0 else "⟳ +"))
+		_set_booster_btn(_btn_rotate, "rotate", rotc, rot_active)
 		_btn_rotate.modulate = Color(1.0, 0.92, 0.65) if rot_active else Color.WHITE
 	if _btn_refresh != null:
 		var rc: int = GameState.get_booster_count("refresh")
-		_btn_refresh.text = "🔄 x%d" % rc if rc > 0 else "🔄 +"
+		_set_booster_btn(_btn_refresh, "refresh", rc, false)
 	if _btn_bomb != null:
 		var bc: int = GameState.get_booster_count("bomb")
-		_btn_bomb.text = ("✕" if active_b == "bomb" else ("💣 x%d" % bc if bc > 0 else "💣 +"))
+		_set_booster_btn(_btn_bomb, "bomb", bc, active_b == "bomb")
 		_btn_bomb.modulate = Color(1.0, 0.92, 0.65) if active_b == "bomb" else Color.WHITE
+
+
+## Aktifken "kapat" ikonu, yoksa "+" (mağaza), varsa "xN" gösterir.
+func _set_booster_btn(btn: Button, icon_name: String, count: int, active: bool) -> void:
+	btn.icon = ThemeManager.get_icon("close" if active else icon_name)
+	btn.text = "" if active else (("x%d" % count) if count > 0 else "+")
 
 
 func _on_booster_pressed(booster_id: String) -> void:
@@ -644,6 +700,15 @@ func _add_score(delta_pts: int) -> void:
 	current_score += delta_pts
 	piece_tray.current_score_hint = current_score
 
+	# Rekor Bölgesi: rekorun %85'ine gelince açıkça duyurulur ve parçalar zorlaşır
+	if not _record_zone_active and _run_initial_best >= 300 and current_score >= int(_run_initial_best * 0.85):
+		_record_zone_active = true
+		piece_tray.record_zone = true
+		AudioManager.play_booster()
+		show_combo_popup("REKOR BÖLGESİ!", Color("#F59E0B"))
+		show_status("Parçalar zorlaştı!", Color("#FDE68A"))
+	_update_record_banner()
+
 	# İlk kez Best Score geçildiğinde oyun başına 1 kez bildirim + ses
 	if not _new_best_announced and _run_initial_best > 0 and current_score > _run_initial_best:
 		_new_best_announced = true
@@ -654,6 +719,78 @@ func _add_score(delta_pts: int) -> void:
 	while current_score >= _next_booster_score:
 		_next_booster_score += 1500
 		_grant_booster_reward()
+
+
+## Oyun sonu ekranına "Reklam izle, altını 2'ye katla" butonu ekler (oyun başına 1 kez).
+func _add_double_coins_button(coin_amount: int) -> void:
+	if coin_amount <= 0:
+		return
+	_offer_shown = true
+	var dbl_btn := ThemeManager.make_button("2X ALTIN  ·  +%d" % coin_amount, 24, "emerald", 16, "video")
+	dbl_btn.custom_minimum_size = Vector2(0, 76)
+	dbl_btn.pressed.connect(func() -> void:
+		dbl_btn.disabled = true
+		AdManager.show_rewarded("double_coins", func(completed: bool) -> void:
+			if not completed:
+				if is_instance_valid(dbl_btn):
+					dbl_btn.disabled = false
+				return
+			_offer_taken = true
+			GameState.add_coins(coin_amount, true)
+			AudioManager.play_purchase()
+			if is_instance_valid(dbl_btn):
+				dbl_btn.text = "+%d ALTIN ALINDI" % coin_amount
+				dbl_btn.icon = ThemeManager.get_icon("check")
+		)
+	)
+	_modal_box.add_child(dbl_btn)
+
+
+## Günlük sonucu Wordle gibi paylaşılabilir metin olarak panoya kopyalar.
+func _make_share_button(stars: int) -> Button:
+	var share_btn := ThemeManager.make_button("SONUCU PAYLAŞ", 22, "purple", 16, "share")
+	share_btn.custom_minimum_size = Vector2(0, 66)
+	share_btn.pressed.connect(func() -> void:
+		DisplayServer.clipboard_set(build_daily_share_text(stars))
+		AudioManager.play_ui_click()
+		share_btn.text = "KOPYALANDI · YAPIŞTIR & GÖNDER"
+		share_btn.icon = ThemeManager.get_icon("check")
+	)
+	return share_btn
+
+
+func build_daily_share_text(stars: int) -> String:
+	var start: int = int(Time.get_unix_time_from_datetime_string("2026-01-01T00:00:00"))
+	var today: int = int(Time.get_unix_time_from_datetime_string(GameState.get_today_key() + "T00:00:00"))
+	var day_no: int = maxi(1, int((today - start) / 86400) + 1)
+	var star_txt: String = ""
+	for i in range(3):
+		star_txt += "⭐" if i < stars else "☆"
+	var week: String = ""
+	var colors: Array = ["🟩", "🟨", "🟪", "🟥", "🟦", "🟩", "🟨"]
+	for i in range(7):
+		week += str(colors[i]) if GameState.mosaic_week_days[i] else "⬛"
+	var lines: Array = [
+		"RelicGrid Günlük #%d" % day_no,
+		"%s  %d puan" % [star_txt, current_score],
+		"🔥 %d günlük seri" % GameState.daily_streak,
+		week,
+	]
+	return "\n".join(lines)
+
+
+func _on_quest_completed(_text: String) -> void:
+	show_status("GÖREV TAMAM!", Color("#34D399"))
+
+
+func _update_record_banner() -> void:
+	if _record_banner == null:
+		return
+	_record_banner.visible = _record_zone_active
+	if not _record_zone_active:
+		return
+	var left: int = _run_initial_best - current_score
+	_record_banner_lbl.text = ("%d puan kaldı" % left) if left > 0 else "REKOR KIRILDI!"
 
 
 func _grant_booster_reward() -> void:
@@ -714,6 +851,42 @@ func _on_piece_placed(summary: Dictionary) -> void:
 	_check_victory_or_moves()
 	if not session_ended:
 		save_current_progress()
+		# Tepsi bittiyse bu bir doğal ara: baskı eşiği geçildiyse geçiş reklamı +
+		# Hediye Çarkı. Rekor Bölgesi'nde ya da büyük kombodan hemen sonra çıkmaz.
+		AdManager.note_lines_cleared(lines_c)
+		DailyQuests.report("lines", lines_c)
+		if lines_c >= 2:
+			DailyQuests.report("combo", 1)
+		if piece_tray.is_tray_empty():
+			AdManager.note_tray_finished()
+			_maybe_mid_game_ad.call_deferred(_record_zone_active or lines_c >= 2 or streak_c >= 3)
+
+
+## Oyuncu bu oyun sonu ekranında ödüllü teklifi gördü ama almadıysa true.
+## O an zorunlu reklam gösterilmez (reddettikten hemen sonra reklam = kötü deneyim).
+func _declined_offer() -> bool:
+	return _offer_shown and not _offer_taken
+
+
+func _is_actively_playing() -> bool:
+	if session_ended or is_paused or grid_board == null or piece_tray == null:
+		return false
+	if _modal_backdrop != null and _modal_backdrop.visible:
+		return false
+	return not AdManager.is_showing()
+
+
+func _maybe_mid_game_ad(protected_moment: bool = false) -> void:
+	if not _is_actively_playing():
+		return
+	piece_tray.set_interaction_locked(true)
+	var shown: bool = AdManager.try_mid_game_break(func() -> void:
+		if is_instance_valid(piece_tray) and not session_ended and not is_paused:
+			piece_tray.set_interaction_locked(false)
+		_update_booster_buttons()
+	, protected_moment)
+	if not shown:
+		piece_tray.set_interaction_locked(false)
 
 
 func _check_victory_or_moves() -> void:
@@ -755,7 +928,7 @@ func _refresh_hud(last_combo: float = 1.0, last_streak_mult: float = 1.0) -> voi
 			_mid_cap_lbl.text = "BEST"
 			_mid_val_lbl.text = str(maxi(GameState.best_special_endless, current_score))
 			_right_cap_lbl.text = "SERİ"
-			_right_val_lbl.text = "×%.2f" % last_streak_mult if last_streak_mult > 1.0 else ("🔥%d" % grid_board.streak_count)
+			_right_val_lbl.text = "×%.2f" % last_streak_mult if last_streak_mult > 1.0 else ("x%d" % grid_board.streak_count)
 		_:
 			_mid_cap_lbl.text = "HEDEF"
 			_mid_val_lbl.text = str(target_score)
@@ -763,7 +936,7 @@ func _refresh_hud(last_combo: float = 1.0, last_streak_mult: float = 1.0) -> voi
 			if target_obstacles > 0:
 				_right_val_lbl.text = "%d/%d" % [mini(broken_obstacles, target_obstacles), target_obstacles]
 			else:
-				_right_val_lbl.text = "✓"
+				_right_val_lbl.text = "—"
 
 	_progress_bar_canvas.queue_redraw()
 
@@ -805,7 +978,9 @@ func _compute_earned_stars() -> int:
 
 func _trigger_stage_clear() -> void:
 	session_ended = true
-	BoardSaveManager.clear_saved_run()
+	_offer_shown = false
+	_offer_taken = false
+	BoardSaveManager.clear_saved_run(int(GameState.active_mode))
 	grid_board.set_booster_targeting("")
 	piece_tray.set_rotate_targeting(false)
 	piece_tray.set_interaction_locked(true)
@@ -818,42 +993,61 @@ func _trigger_stage_clear() -> void:
 	elif GameState.active_mode == GameState.PlayMode.DAILY_MOSAIC:
 		reward_info = GameState.record_daily_victory(current_score)
 
+	# Battle Pass XP (bugün zaten bitirilmiş günlük tekrar oynanınca zafer bonusu yok)
+	var first_daily: bool = bool(reward_info.get("first_clear_today", false))
+	var counts_as_win: bool = GameState.active_mode == GameState.PlayMode.CAMPAIGN or first_daily
+	var xp_gain: int = BattlePass.award_game_xp(current_score - _rewarded_score, counts_as_win, stars, first_daily)
+	_rewarded_score = current_score
+
 	_clear_modal_children()
 	_modal_backdrop.visible = true
 
-	_modal_box.add_child(ThemeManager.make_label("ZAFER!", 34, "gold_light", true))
-	var star_str: String = ("★ " if stars >= 1 else "☆ ") + ("★ " if stars >= 2 else "☆ ") + ("★" if stars >= 3 else "☆")
-	_modal_box.add_child(ThemeManager.make_label(star_str, 44, "gold_light", true))
+	_modal_box.add_child(ThemeManager.make_title("ZAFER!", 48, "gold_light"))
+	var star_row := HBoxContainer.new()
+	star_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	star_row.add_theme_constant_override("separation", 14)
+	for si in range(3):
+		star_row.add_child(ThemeManager.make_icon("star", 64, "gold_light" if si < stars else Color(0.25, 0.32, 0.29)))
+	_modal_box.add_child(star_row)
 	_modal_box.add_child(ThemeManager.make_label("%d" % current_score, 36, "text_main", true))
-	_modal_box.add_child(ThemeManager.make_label(
-		"+%d 🪙   ·   +%d LP" % [int(reward_info.get("coin_gain", 30)), int(reward_info.get("league_gain", 50))],
-		20, Color("#34D399"), true
-	))
+	_modal_box.add_child(_make_reward_row(int(reward_info.get("coin_gain", 0)), int(reward_info.get("league_gain", 0)), xp_gain))
+	_add_double_coins_button(int(reward_info.get("coin_gain", 0)))
+
+	if not _quest_game_counted:
+		DailyQuests.report("games", 1)
+		_quest_game_counted = true
+	DailyQuests.report("score_game", current_score)
+	if GameState.active_mode == GameState.PlayMode.CAMPAIGN:
+		DailyQuests.report("stage_win", 1)
 
 	if GameState.active_mode == GameState.PlayMode.DAILY_MOSAIC:
-		_modal_box.add_child(ThemeManager.make_label("%d🔥 SERİ" % GameState.daily_streak, 22, "gold_light", true))
+		DailyQuests.report("daily", 1)
+		_modal_box.add_child(ThemeManager.make_label("%d GÜNLÜK SERİ" % GameState.daily_streak, 24, "gold_light", true))
 		_modal_mosaic_strip = Control.new()
 		_modal_mosaic_strip.custom_minimum_size = Vector2(0, 66)
 		_modal_mosaic_strip.draw.connect(_draw_modal_mosaic_board)
 		_modal_box.add_child(_modal_mosaic_strip)
+		_modal_box.add_child(_make_share_button(stars))
 
 	if GameState.active_mode == GameState.PlayMode.CAMPAIGN and int(level_config["stage"]) < 500:
 		var next_stage: int = int(level_config["stage"]) + 1
-		var next_btn := ThemeManager.make_button("▶ BÖLÜM %d" % next_stage, 22, "gold")
-		next_btn.custom_minimum_size = Vector2(0, 60)
+		var next_btn := ThemeManager.make_button("BÖLÜM %d" % next_stage, 28, "gold", 16, "play")
+		next_btn.custom_minimum_size = Vector2(0, 84)
 		next_btn.pressed.connect(func() -> void:
 			AudioManager.play_pickup()
-			GameState.selected_stage = next_stage
-			GameState.campaign_page = int((next_stage - 1) / 20)
-			_start_configured_level(true)
+			AdManager.on_game_end_continue(func() -> void:
+				GameState.selected_stage = next_stage
+				GameState.campaign_page = int((next_stage - 1) / 20)
+				_start_configured_level(true)
+			, _declined_offer())
 		)
 		_modal_box.add_child(next_btn)
 
-	var replay_btn := ThemeManager.make_button("↻ TEKRAR", 19, "stone")
-	replay_btn.custom_minimum_size = Vector2(0, 52)
+	var replay_btn := ThemeManager.make_button("TEKRAR", 24, "stone", 16, "refresh")
+	replay_btn.custom_minimum_size = Vector2(0, 72)
 	replay_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		_start_configured_level(true)
+		AdManager.on_game_end_continue(func() -> void: _start_configured_level(true), _declined_offer())
 	)
 	_modal_box.add_child(replay_btn)
 
@@ -861,16 +1055,18 @@ func _trigger_stage_clear() -> void:
 	menu_btn.custom_minimum_size = Vector2(0, 50)
 	menu_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		AdManager.on_game_end_continue(func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"), _declined_offer())
 	)
 	_modal_box.add_child(menu_btn)
 
 
 func _trigger_game_over() -> void:
 	session_ended = true
+	_offer_shown = false
+	_offer_taken = false
 	_stuck_offer_active = false
 	_btn_give_up.visible = false
-	BoardSaveManager.clear_saved_run()
+	BoardSaveManager.clear_saved_run(int(GameState.active_mode))
 	grid_board.set_booster_targeting("")
 	piece_tray.set_rotate_targeting(false)
 	piece_tray.set_interaction_locked(true)
@@ -878,11 +1074,17 @@ func _trigger_game_over() -> void:
 
 	var res: Dictionary = {}
 	if GameState.active_mode == GameState.PlayMode.MODE_NORMAL_ENDLESS:
-		res = GameState.record_endless_run(current_score, false)
+		res = GameState.record_endless_run(current_score, false, _rewarded_score)
 	elif GameState.active_mode == GameState.PlayMode.MODE_SPECIAL_ENDLESS:
-		res = GameState.record_endless_run(current_score, true)
+		res = GameState.record_endless_run(current_score, true, _rewarded_score)
 	else:
-		res = GameState.record_failed_attempt_points(current_score)
+		res = GameState.record_failed_attempt_points(current_score, _rewarded_score)
+	var xp_gain: int = BattlePass.award_game_xp(current_score - _rewarded_score, false)
+	_rewarded_score = current_score
+	if not _quest_game_counted:
+		DailyQuests.report("games", 1)
+		_quest_game_counted = true
+	DailyQuests.report("score_game", current_score)
 
 	var lp_gain: int = int(res.get("league_gain", 0))
 	var coin_gain: int = int(res.get("coin_gain", 0))
@@ -891,23 +1093,40 @@ func _trigger_game_over() -> void:
 	_clear_modal_children()
 	_modal_backdrop.visible = true
 
-	_modal_box.add_child(ThemeManager.make_label("YENİ REKOR! ✨" if new_record else "HAMLE YOK", 32, "gold_light" if new_record else Color("#FCA5A5"), true))
-	_modal_box.add_child(ThemeManager.make_label("%d" % current_score, 40, "text_main", true))
-	_modal_box.add_child(ThemeManager.make_label("+%d 🪙   ·   +%d LP" % [coin_gain, lp_gain], 20, Color("#34D399"), true))
+	_modal_box.add_child(ThemeManager.make_title("YENİ REKOR!" if new_record else "HAMLE YOK", 40, "gold_light" if new_record else Color("#FCA5A5")))
+	_modal_box.add_child(ThemeManager.make_label("%d" % current_score, 84, "text_main", true))
 
-	# Tek Seferlik İkinci Şans (Revive)
+	# Rekora ne kadar kaldığını göster (revive için en güçlü motivasyon)
+	var best_now: int = _run_initial_best
+	if not new_record and best_now > 0 and current_score < best_now:
+		_modal_box.add_child(_make_record_gap_box(current_score, best_now))
+
+	# Tek Seferlik İkinci Şans (Revive): SADECE ödüllü reklamla. Altınla veya
+	# NO ADS/VIP ile ücretsiz alınamaz.
 	if not _revive_used:
-		var revive_txt: String = "⚡ ÜCRETSİZ DEVAM ET" if GameState.no_ads else "🎬 REKLAM İZLE & DEVAM ET"
-		var revive_btn := ThemeManager.make_button(revive_txt, 20, "emerald" if GameState.no_ads else "amber_solid")
-		revive_btn.custom_minimum_size = Vector2(0, 60)
-		revive_btn.pressed.connect(revive_game)
+		_offer_shown = true
+		var revive_btn := ThemeManager.make_button("REKLAM İZLE & DEVAM ET", 28, "amber_solid", 18, "video")
+		revive_btn.custom_minimum_size = Vector2(0, 100)
+		revive_btn.pressed.connect(func() -> void:
+			revive_btn.disabled = true
+			AdManager.show_rewarded("revive", func(completed: bool) -> void:
+				if completed:
+					_offer_taken = true
+					revive_game()
+				elif is_instance_valid(revive_btn):
+					revive_btn.disabled = false
+			)
+		)
 		_modal_box.add_child(revive_btn)
 
-	var retry_btn := ThemeManager.make_button("↻ TEKRAR", 20, "gold")
-	retry_btn.custom_minimum_size = Vector2(0, 56)
+	_add_double_coins_button(coin_gain)
+	_modal_box.add_child(_make_reward_row(coin_gain, lp_gain, xp_gain))
+
+	var retry_btn := ThemeManager.make_button("TEKRAR", 26, "gold", 16, "refresh")
+	retry_btn.custom_minimum_size = Vector2(0, 80)
 	retry_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		_start_configured_level(true)
+		AdManager.on_game_end_continue(func() -> void: _start_configured_level(true), _declined_offer())
 	)
 	_modal_box.add_child(retry_btn)
 
@@ -915,7 +1134,7 @@ func _trigger_game_over() -> void:
 	menu_btn.custom_minimum_size = Vector2(0, 50)
 	menu_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		AdManager.on_game_end_continue(func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"), _declined_offer())
 	)
 	_modal_box.add_child(menu_btn)
 
@@ -930,7 +1149,7 @@ func revive_game() -> void:
 	_hide_modal()
 	grid_board.clear_center_area(1)
 	piece_tray.set_interaction_locked(false)
-	piece_tray.refill_tray()
+	piece_tray.refill_tray(true)
 	save_current_progress()
 
 
@@ -946,7 +1165,7 @@ func _open_pause_modal() -> void:
 
 	_modal_box.add_child(ThemeManager.make_label("DURAKLAT", 30, "gold_light", true))
 
-	var resume_btn := ThemeManager.make_button("▶ DEVAM", 22, "gold")
+	var resume_btn := ThemeManager.make_button("DEVAM", 26, "gold", 16, "play")
 	resume_btn.custom_minimum_size = Vector2(0, 58)
 	resume_btn.pressed.connect(toggle_pause)
 	_modal_box.add_child(resume_btn)
@@ -973,7 +1192,7 @@ func _open_pause_modal() -> void:
 	toggles_hb.add_child(hap_btn)
 	_modal_box.add_child(toggles_hb)
 
-	var restart_btn := ThemeManager.make_button("↻ YENİDEN", 19, "stone")
+	var restart_btn := ThemeManager.make_button("YENİDEN", 22, "stone", 16, "refresh")
 	restart_btn.custom_minimum_size = Vector2(0, 52)
 	restart_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
@@ -1034,6 +1253,68 @@ func _draw_modal_mosaic_board() -> void:
 				13,
 				td["gold_light"] if i == today_idx else td["text_dim"]
 			)
+
+
+## Oyun sonu ödül kutuları: ALTIN · LP · XP
+func _make_reward_row(coin_gain: int, lp_gain: int, xp_gain: int) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	for item in [[coin_gain, "ALTIN", ThemeManager.get_color("gold_light")], [lp_gain, "LP", Color("#C084FC")], [xp_gain, "XP", Color("#34D399")]]:
+		var box := _make_inset_box()
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var vb := VBoxContainer.new()
+		vb.add_theme_constant_override("separation", 0)
+		vb.add_child(ThemeManager.make_label("+%d" % int(item[0]), 30, item[2], true))
+		vb.add_child(ThemeManager.make_label(str(item[1]), 16, "text_dim", true))
+		box.add_child(vb)
+		row.add_child(box)
+	return row
+
+
+## "Rekora X puan kaldı" + ilerleme çubuğu
+func _make_record_gap_box(score: int, best: int) -> PanelContainer:
+	var box := _make_inset_box()
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	var hb := HBoxContainer.new()
+	var l1 := ThemeManager.make_label("Rekora %d puan kaldı" % (best - score), 26, "gold_light")
+	l1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(l1)
+	hb.add_child(ThemeManager.make_label("Rekor %d" % best, 18, "text_dim"))
+	vb.add_child(hb)
+	var bar := ProgressBar.new()
+	bar.max_value = best
+	bar.value = score
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 16)
+	var bg_sb := StyleBoxFlat.new()
+	bg_sb.bg_color = ThemeManager.get_color("bg_deep")
+	bg_sb.border_color = ThemeManager.get_color("border_stone")
+	bg_sb.set_border_width_all(1)
+	bg_sb.set_corner_radius_all(4)
+	var fill_sb := StyleBoxFlat.new()
+	fill_sb.bg_color = Color("#F59E0B")
+	fill_sb.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("background", bg_sb)
+	bar.add_theme_stylebox_override("fill", fill_sb)
+	vb.add_child(bar)
+	box.add_child(vb)
+	return box
+
+
+func _make_inset_box() -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = ThemeManager.get_color("card_dark")
+	sb.border_color = ThemeManager.get_color("border_stone")
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(18)
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	p.add_theme_stylebox_override("panel", sb)
+	return p
 
 
 func _clear_modal_children() -> void:

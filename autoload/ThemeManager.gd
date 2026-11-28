@@ -64,8 +64,94 @@ const THEMES: Dictionary = {
 const THEME_ORDER: Array = ["emerald_temple", "obsidian_gold", "glacier_rune"]
 
 
+const ICON_DIR: String = "res://assets/icons/"
+## Yazı tipleri (OFL): dosyalar yoksa Godot'un varsayılan yazı tipi kullanılır.
+const FONT_BODY_PATH: String = "res://assets/fonts/Rubik-Variable.ttf"
+const FONT_DISPLAY_PATH: String = "res://assets/fonts/Cinzel-Variable.ttf"
+
+var font_body: Font = null
+var font_display: Font = null
+var _icon_cache: Dictionary = {}
+
+
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(get_color("bg_deep"))
+	_setup_fonts()
+
+
+func _setup_fonts() -> void:
+	font_body = _load_font(FONT_BODY_PATH, 500)
+	font_display = _load_font(FONT_DISPLAY_PATH, 900)
+	if font_body != null:
+		var t := Theme.new()
+		t.default_font = font_body
+		get_tree().root.theme = t
+
+
+func _load_font(path: String, weight: int) -> Font:
+	if not ResourceLoader.exists(path):
+		return null
+	var base: Font = load(path)
+	if base == null:
+		return null
+	var fv := FontVariation.new()
+	fv.base_font = base
+	fv.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): weight}
+	return fv
+
+
+## res://assets/icons/<name>.svg dokusunu döndürür (beyaz çizgi ikon; renk modulate ile verilir).
+func get_icon(icon_name: String) -> Texture2D:
+	if _icon_cache.has(icon_name):
+		return _icon_cache[icon_name]
+	var path: String = ICON_DIR + icon_name + ".svg"
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	_icon_cache[icon_name] = tex
+	return tex
+
+
+func make_icon(icon_name: String, px: int = 22, col_key_or_color: Variant = "gold_light") -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = get_icon(icon_name)
+	tr.custom_minimum_size = Vector2(px, px)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.modulate = _resolve_color(col_key_or_color, get_color("gold_light"))
+	return tr
+
+
+## Oyma taş başlık (Cinzel varsa onunla).
+func make_title(txt: String, font_sz: int = 28, col_key_or_color: Variant = "gold_light", centered: bool = true) -> Label:
+	var l := make_label(txt, font_sz, col_key_or_color, centered)
+	if font_display != null:
+		l.add_theme_font_override("font", font_display)
+	return l
+
+
+## Altın sayacı: [madeni para ikonu] 420 — altın çerçeveli hap.
+func make_coin_pill(amount: int, font_sz: int = 17) -> Dictionary:
+	var td: Dictionary = get_theme_data()
+	var panel := PanelContainer.new()
+	var sb := make_card_style(td["card_bg"], td["border_gold"], 14, 10, 4)
+	sb.border_width_bottom = 4
+	panel.add_theme_stylebox_override("panel", sb)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 6)
+	var coin := make_icon("coin", 20, Color.WHITE)
+	hb.add_child(coin)
+	var lbl := make_label(str(amount), font_sz, "gold_light")
+	hb.add_child(lbl)
+	panel.add_child(hb)
+	return {"panel": panel, "label": lbl}
+
+
+func _resolve_color(v: Variant, fallback: Color) -> Color:
+	if typeof(v) == TYPE_COLOR:
+		return v
+	if typeof(v) == TYPE_STRING and str(v) != "":
+		return get_color(str(v))
+	return fallback
 
 
 func get_active_theme_id() -> String:
@@ -141,7 +227,8 @@ func make_button(
 	text_val: String,
 	font_sz: int = 20,
 	variant: String = "gold",
-	corner_radius: int = 14
+	corner_radius: int = 14,
+	icon_name: String = ""
 ) -> Button:
 	var td: Dictionary = get_theme_data()
 	var bg_col: Color = td["card_bg"]
@@ -222,6 +309,15 @@ func make_button(
 	b.add_theme_stylebox_override("hover", hover_sb)
 	b.add_theme_stylebox_override("pressed", pressed_sb)
 	b.add_theme_stylebox_override("disabled", disabled_sb)
+
+	if icon_name != "":
+		b.icon = get_icon(icon_name)
+		b.add_theme_constant_override("icon_max_width", int(font_sz * 1.15))
+		b.add_theme_constant_override("h_separation", 8)
+		var icon_col: Color = border_col if variant in ["emerald", "purple"] else txt_col
+		for state in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
+			b.add_theme_color_override(state, icon_col)
+		b.add_theme_color_override("icon_disabled_color", Color(0.55, 0.60, 0.58, 0.65))
 
 	attach_press_tween(b)
 	return b

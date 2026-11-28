@@ -246,6 +246,7 @@ func consume_booster(booster_id: String) -> bool:
 	boosters[booster_id] = cur - 1
 	save_game()
 	state_updated.emit()
+	DailyQuests.report("booster", 1)
 	return true
 
 
@@ -357,7 +358,9 @@ func record_daily_victory(score: int) -> Dictionary:
 	}
 
 
-func record_endless_run(score: int, is_special: bool = false) -> Dictionary:
+## already_rewarded_score: Revive sonrası ikinci Game Over'da, ilk seferde ödülü
+## verilmiş skor. Rekor tam skorla güncellenir ama altın/LP sadece yeni kısım için verilir.
+func record_endless_run(score: int, is_special: bool = false, already_rewarded_score: int = 0) -> Dictionary:
 	_sync_calendar_states()
 	var is_record: bool = false
 	if is_special:
@@ -370,9 +373,16 @@ func record_endless_run(score: int, is_special: bool = false) -> Dictionary:
 			best_normal_endless = score
 
 	endless_high_score = maxi(best_normal_endless, best_special_endless)
-	var coin_gain: int = maxi(10, int(floor(float(score) / 35.0)))
+	var reward_score: int = maxi(0, score - already_rewarded_score)
+	var coin_gain: int = 0
+	var league_gain: int = 0
+	if already_rewarded_score <= 0:
+		coin_gain = maxi(10, int(floor(float(reward_score) / 35.0)))
+		league_gain = maxi(15, int(round(float(reward_score) * (0.28 if is_special else 0.22))))
+	elif reward_score > 0:
+		coin_gain = int(floor(float(reward_score) / 35.0))
+		league_gain = int(round(float(reward_score) * (0.28 if is_special else 0.22)))
 	coins += coin_gain
-	var league_gain: int = maxi(15, int(round(float(score) * (0.28 if is_special else 0.22))))
 	add_weekly_points(league_gain, false)
 	save_game()
 	state_updated.emit()
@@ -383,13 +393,18 @@ func record_endless_run(score: int, is_special: bool = false) -> Dictionary:
 	}
 
 
-func record_failed_attempt_points(score: int) -> Dictionary:
+func record_failed_attempt_points(score: int, already_rewarded_score: int = 0) -> Dictionary:
 	_sync_calendar_states()
-	if score <= 0:
+	var reward_score: int = maxi(0, score - already_rewarded_score)
+	if reward_score <= 0:
 		return {"league_gain": 0, "coin_gain": 0}
-	var coin_gain: int = maxi(5, int(floor(float(score) / 60.0)))
+	var first_time: bool = already_rewarded_score <= 0
+	var coin_gain: int = int(floor(float(reward_score) / 60.0))
+	var league_gain: int = int(round(float(reward_score) * 0.10))
+	if first_time:
+		coin_gain = maxi(5, coin_gain)
+		league_gain = maxi(10, league_gain)
 	coins += coin_gain
-	var league_gain: int = maxi(10, int(round(float(score) * 0.10)))
 	add_weekly_points(league_gain, false)
 	save_game()
 	state_updated.emit()

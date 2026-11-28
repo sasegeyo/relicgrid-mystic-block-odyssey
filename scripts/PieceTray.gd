@@ -24,6 +24,8 @@ var current_score_hint: int = 0
 var jokers_used: int = 0
 var rescues_used: int = 0
 var rotate_mode_active: bool = false
+## Rekor Bölgesi: oyuncuya ekranda duyurulur; büyük parçalar açılır ve sığma yardımı kalkar.
+var record_zone: bool = false
 
 var _rng := RandomNumberGenerator.new()
 var _max_shape_tier: int = 2
@@ -80,6 +82,7 @@ func setup_tray(board: GridBoard, seed_val: int, max_tier: int, is_special: bool
 	jokers_used = 0
 	rescues_used = 0
 	rotate_mode_active = false
+	record_zone = false
 	_dragging_slot = -1
 	_return_anim_slot = -1
 	_interaction_locked = false
@@ -150,11 +153,14 @@ func can_any_rotation_fit() -> bool:
 
 
 ## DDA (300 -> 6000) + Akıllı Parça Üreteci (%50 küçük, %70 1x1, %85 Joker maks. 3)
-func refill_tray() -> void:
+## guarantee_fit: true ise (ör. Revive sonrası) tahta ne kadar dolu olursa olsun
+## en az bir parçanın sığması garanti edilir.
+func refill_tray(guarantee_fit: bool = false) -> void:
 	var all_shapes: Array[Dictionary] = PieceLibrary.get_all_shapes()
 	var tier_filtered: Array[Dictionary] = []
+	var tier_cap: int = 2 if record_zone else _max_shape_tier
 	for sh in all_shapes:
-		if int(sh["tier"]) <= _max_shape_tier:
+		if int(sh["tier"]) <= tier_cap:
 			tier_filtered.append(sh)
 	if tier_filtered.is_empty():
 		tier_filtered = all_shapes
@@ -175,7 +181,12 @@ func refill_tray() -> void:
 
 	# Sadece tahta henüz çok dolmamışken (< %72) 1 sığan parça yardımı ver;
 	# %72 üstünde tamamen doğal çekiliş yap ki oyuncu sıkıştığında gerçekten kaybedebilsin.
-	var guaranteed_slot: int = _rng.randi_range(0, SLOT_COUNT - 1) if occupancy < 0.72 else -1
+	var helps: bool = guarantee_fit or (occupancy < 0.72 and not record_zone)
+	var guaranteed_slot: int = _rng.randi_range(0, SLOT_COUNT - 1) if helps else -1
+	if guarantee_fit and grid_board != null and fittable.is_empty():
+		fittable = grid_board.get_fittable_shapes(all_shapes)
+		if fittable.is_empty():
+			fittable = [PieceLibrary.get_shape_by_id("mono_1")]
 
 	for i in range(SLOT_COUNT):
 		var chosen_shape: Dictionary
@@ -207,6 +218,8 @@ func _pick_weighted_shape(pool: Array[Dictionary], occupancy: float, dda_t: floa
 	for sh in pool:
 		var w: float = float(maxi(1, int(sh.get("weight", 5))))
 		var tier: int = int(sh.get("tier", 0))
+		if record_zone and tier == 2:
+			w *= 1.6
 		if occupancy >= 0.50:
 			if tier == 0:
 				w *= 2.1
@@ -404,24 +417,28 @@ func _input(event: InputEvent) -> void:
 	if _dragging_slot < 0:
 		return
 
+	# _input olayları ekran (viewport) koordinatındadır; kamera/sarsıntı dönüşümünü
+	# geri alarak _gui_input ve get_global_transform ile aynı uzaya çeviriyoruz.
+	var to_canvas: Transform2D = get_viewport().get_canvas_transform().affine_inverse()
+
 	if event is InputEventMouseMotion:
 		var mm: InputEventMouseMotion = event
-		_update_drag(mm.position)
+		_update_drag(to_canvas * mm.position)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag:
 		var sd: InputEventScreenDrag = event
 		_is_touch_drag = true
-		_update_drag(sd.position)
+		_update_drag(to_canvas * sd.position)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event
 		if mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
-			_finish_drag(mb.position)
+			_finish_drag(to_canvas * mb.position)
 			get_viewport().set_input_as_handled()
 	elif event is InputEventScreenTouch:
 		var st: InputEventScreenTouch = event
 		if not st.pressed:
-			_finish_drag(st.position)
+			_finish_drag(to_canvas * st.position)
 			get_viewport().set_input_as_handled()
 
 
@@ -517,7 +534,7 @@ func _draw() -> void:
 			(srect.size.x - 24.0) / float(maxi(1, max_dim)),
 			(srect.size.y - 24.0) / float(maxi(1, max_dim))
 		)
-		fit_cell = clampf(fit_cell, 16.0, 34.0) * _slot_spawn_scales[i]
+		fit_cell = clampf(fit_cell, 18.0, 46.0) * _slot_spawn_scales[i]
 
 		var draw_center: Vector2 = srect.get_center()
 		if i == _return_anim_slot and _return_anim_t < 1.0:

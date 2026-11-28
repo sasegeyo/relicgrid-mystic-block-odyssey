@@ -36,7 +36,7 @@ func _build_ui() -> void:
 	var top_bar := HBoxContainer.new()
 	top_bar.add_theme_constant_override("separation", 10)
 
-	var back_btn := ThemeManager.make_button("←", 22, "stone")
+	var back_btn := ThemeManager.make_button("", 22, "stone", 14, "back")
 	back_btn.custom_minimum_size = Vector2(72, 52)
 	back_btn.pressed.connect(func() -> void:
 		AudioManager.play_sfx("ui_click")
@@ -44,11 +44,11 @@ func _build_ui() -> void:
 	)
 	top_bar.add_child(back_btn)
 
-	var title_lbl := ThemeManager.make_label("KAMPANYA", 26, "gold_light", true)
+	var title_lbl := ThemeManager.make_title("KAMPANYA", 32, "gold_light", true)
 	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_bar.add_child(title_lbl)
 
-	var jump_btn := ThemeManager.make_button("▶ #%d" % GameState.unlocked_stage, 19, "amber_solid")
+	var jump_btn := ThemeManager.make_button("%d" % GameState.unlocked_stage, 19, "amber_solid", 14, "play")
 	jump_btn.custom_minimum_size = Vector2(124, 52)
 	jump_btn.pressed.connect(func() -> void:
 		AudioManager.play_sfx("ui_click")
@@ -63,7 +63,8 @@ func _build_ui() -> void:
 	_biome_lbl = ThemeManager.make_label("", 22, "gold_light")
 	_biome_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h_hb.add_child(_biome_lbl)
-	h_hb.add_child(ThemeManager.make_label("★ %d / 1500" % GameState.get_total_stars(), 22, "text_main"))
+	h_hb.add_child(ThemeManager.make_icon("star", 24, "gold_light"))
+	h_hb.add_child(ThemeManager.make_label("%d / 1500" % GameState.get_total_stars(), 22, "text_main"))
 	header_card.add_child(h_hb)
 	main_vbox.add_child(header_card)
 
@@ -76,7 +77,7 @@ func _build_ui() -> void:
 	first_btn.pressed.connect(func() -> void: _set_page(0))
 	nav_row.add_child(first_btn)
 
-	_prev_btn = ThemeManager.make_button("◀", 18, "stone")
+	_prev_btn = ThemeManager.make_button("", 18, "stone", 14, "back")
 	_prev_btn.custom_minimum_size = Vector2(78, 48)
 	_prev_btn.pressed.connect(func() -> void: _set_page(_page_index - 1))
 	nav_row.add_child(_prev_btn)
@@ -85,7 +86,7 @@ func _build_ui() -> void:
 	_page_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	nav_row.add_child(_page_lbl)
 
-	_next_btn = ThemeManager.make_button("▶", 18, "stone")
+	_next_btn = ThemeManager.make_button("", 18, "stone", 14, "play")
 	_next_btn.custom_minimum_size = Vector2(78, 48)
 	_next_btn.pressed.connect(func() -> void: _set_page(_page_index + 1))
 	nav_row.add_child(_next_btn)
@@ -154,14 +155,22 @@ func _create_stage_card(stage_num: int) -> Control:
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_theme_constant_override("separation", 6)
 
-	var num_txt: String = str(stage_num) if is_unlocked else ("🔒 %d" % stage_num)
+	var num_txt: String = str(stage_num)
 	var num_col: Color = ThemeManager.get_color("gold_light") if is_current else (ThemeManager.get_color("text_main") if is_unlocked else Color(0.45, 0.52, 0.49))
 	vb.add_child(ThemeManager.make_label(num_txt, 26 if is_unlocked else 18, num_col, true))
 
 	if is_unlocked:
-		var s_txt: String = ("★" if stars >= 1 else "☆") + ("★" if stars >= 2 else "☆") + ("★" if stars >= 3 else "☆")
-		var s_col: Color = ThemeManager.get_color("gold_light") if stars > 0 else Color(0.42, 0.52, 0.48)
-		vb.add_child(ThemeManager.make_label(s_txt, 17, s_col, true))
+		var star_hb := HBoxContainer.new()
+		star_hb.alignment = BoxContainer.ALIGNMENT_CENTER
+		star_hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		star_hb.add_theme_constant_override("separation", 2)
+		for si in range(3):
+			star_hb.add_child(ThemeManager.make_icon("star", 18, "gold_light" if si < stars else Color(0.42, 0.52, 0.48)))
+		vb.add_child(star_hb)
+	else:
+		var lock_ic := ThemeManager.make_icon("lock", 22, Color(0.45, 0.52, 0.49))
+		lock_ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(lock_ic)
 
 	btn.add_child(vb)
 	btn.pressed.connect(func() -> void:
