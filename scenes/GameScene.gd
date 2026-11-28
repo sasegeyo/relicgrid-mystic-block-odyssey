@@ -96,6 +96,8 @@ func _notification(what: int) -> void:
 
 func _process(delta: float) -> void:
 	_modal_pulse += delta
+	if _is_actively_playing():
+		AdManager.add_play_time(delta)
 	if absf(displayed_score - float(current_score)) > 0.4:
 		displayed_score = lerpf(displayed_score, float(current_score), clampf(delta * 12.0, 0.0, 1.0))
 		if absf(displayed_score - float(current_score)) < 1.0:
@@ -802,6 +804,31 @@ func _on_piece_placed(summary: Dictionary) -> void:
 	_check_victory_or_moves()
 	if not session_ended:
 		save_current_progress()
+		# Tepsi bittiyse bu bir doğal ara: tepsi yenilendikten sonra süre dolmuşsa
+		# geçiş reklamı + Hediye Çarkı.
+		if piece_tray.is_tray_empty():
+			_maybe_mid_game_ad.call_deferred()
+
+
+func _is_actively_playing() -> bool:
+	if session_ended or is_paused or grid_board == null or piece_tray == null:
+		return false
+	if _modal_backdrop != null and _modal_backdrop.visible:
+		return false
+	return not AdManager.is_showing()
+
+
+func _maybe_mid_game_ad() -> void:
+	if not _is_actively_playing():
+		return
+	piece_tray.set_interaction_locked(true)
+	var shown: bool = AdManager.try_mid_game_break(func() -> void:
+		if is_instance_valid(piece_tray) and not session_ended and not is_paused:
+			piece_tray.set_interaction_locked(false)
+		_update_booster_buttons()
+	)
+	if not shown:
+		piece_tray.set_interaction_locked(false)
 
 
 func _check_victory_or_moves() -> void:
