@@ -17,6 +17,9 @@ var session_ended: bool = false
 var is_paused: bool = false
 
 var _revive_used: bool = false
+## Oyun sonu ekranında ödüllü teklif (devam et / 2x altın) gösterildi mi, alındı mı?
+var _offer_shown: bool = false
+var _offer_taken: bool = false
 # Revive öncesi Game Over'da ödülü verilmiş skor (aynı puanlar iki kez ödüllendirilmesin)
 var _rewarded_score: int = 0
 var _next_booster_score: int = 1500
@@ -92,6 +95,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
 		if not session_ended and grid_board != null and piece_tray != null:
 			save_current_progress()
+		AdManager.note_session_interrupted()
 
 
 func _process(delta: float) -> void:
@@ -717,6 +721,7 @@ func _add_score(delta_pts: int) -> void:
 func _add_double_coins_button(coin_amount: int) -> void:
 	if coin_amount <= 0:
 		return
+	_offer_shown = true
 	var dbl_btn := ThemeManager.make_button("2X ALTIN  ·  +%d" % coin_amount, 24, "emerald", 16, "video")
 	dbl_btn.custom_minimum_size = Vector2(0, 76)
 	dbl_btn.pressed.connect(func() -> void:
@@ -726,6 +731,7 @@ func _add_double_coins_button(coin_amount: int) -> void:
 				if is_instance_valid(dbl_btn):
 					dbl_btn.disabled = false
 				return
+			_offer_taken = true
 			GameState.add_coins(coin_amount, true)
 			AudioManager.play_purchase()
 			if is_instance_valid(dbl_btn):
@@ -804,10 +810,18 @@ func _on_piece_placed(summary: Dictionary) -> void:
 	_check_victory_or_moves()
 	if not session_ended:
 		save_current_progress()
-		# Tepsi bittiyse bu bir doğal ara: tepsi yenilendikten sonra süre dolmuşsa
-		# geçiş reklamı + Hediye Çarkı.
+		# Tepsi bittiyse bu bir doğal ara: baskı eşiği geçildiyse geçiş reklamı +
+		# Hediye Çarkı. Rekor Bölgesi'nde ya da büyük kombodan hemen sonra çıkmaz.
+		AdManager.note_lines_cleared(lines_c)
 		if piece_tray.is_tray_empty():
-			_maybe_mid_game_ad.call_deferred()
+			AdManager.note_tray_finished()
+			_maybe_mid_game_ad.call_deferred(_record_zone_active or lines_c >= 2 or streak_c >= 3)
+
+
+## Oyuncu bu oyun sonu ekranında ödüllü teklifi gördü ama almadıysa true.
+## O an zorunlu reklam gösterilmez (reddettikten hemen sonra reklam = kötü deneyim).
+func _declined_offer() -> bool:
+	return _offer_shown and not _offer_taken
 
 
 func _is_actively_playing() -> bool:
@@ -818,7 +832,7 @@ func _is_actively_playing() -> bool:
 	return not AdManager.is_showing()
 
 
-func _maybe_mid_game_ad() -> void:
+func _maybe_mid_game_ad(protected_moment: bool = false) -> void:
 	if not _is_actively_playing():
 		return
 	piece_tray.set_interaction_locked(true)
@@ -826,7 +840,7 @@ func _maybe_mid_game_ad() -> void:
 		if is_instance_valid(piece_tray) and not session_ended and not is_paused:
 			piece_tray.set_interaction_locked(false)
 		_update_booster_buttons()
-	)
+	, protected_moment)
 	if not shown:
 		piece_tray.set_interaction_locked(false)
 
@@ -920,6 +934,8 @@ func _compute_earned_stars() -> int:
 
 func _trigger_stage_clear() -> void:
 	session_ended = true
+	_offer_shown = false
+	_offer_taken = false
 	BoardSaveManager.clear_saved_run(int(GameState.active_mode))
 	grid_board.set_booster_targeting("")
 	piece_tray.set_rotate_targeting(false)
@@ -970,7 +986,7 @@ func _trigger_stage_clear() -> void:
 				GameState.selected_stage = next_stage
 				GameState.campaign_page = int((next_stage - 1) / 20)
 				_start_configured_level(true)
-			)
+			, _declined_offer())
 		)
 		_modal_box.add_child(next_btn)
 
@@ -978,7 +994,7 @@ func _trigger_stage_clear() -> void:
 	replay_btn.custom_minimum_size = Vector2(0, 72)
 	replay_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		AdManager.on_game_end_continue(func() -> void: _start_configured_level(true))
+		AdManager.on_game_end_continue(func() -> void: _start_configured_level(true), _declined_offer())
 	)
 	_modal_box.add_child(replay_btn)
 
@@ -986,13 +1002,15 @@ func _trigger_stage_clear() -> void:
 	menu_btn.custom_minimum_size = Vector2(0, 50)
 	menu_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		AdManager.on_game_end_continue(func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+		AdManager.on_game_end_continue(func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"), _declined_offer())
 	)
 	_modal_box.add_child(menu_btn)
 
 
 func _trigger_game_over() -> void:
 	session_ended = true
+	_offer_shown = false
+	_offer_taken = false
 	_stuck_offer_active = false
 	_btn_give_up.visible = false
 	BoardSaveManager.clear_saved_run(int(GameState.active_mode))
@@ -1029,12 +1047,14 @@ func _trigger_game_over() -> void:
 	# Tek Seferlik İkinci Şans (Revive): SADECE ödüllü reklamla. Altınla veya
 	# NO ADS/VIP ile ücretsiz alınamaz.
 	if not _revive_used:
+		_offer_shown = true
 		var revive_btn := ThemeManager.make_button("REKLAM İZLE & DEVAM ET", 28, "amber_solid", 18, "video")
 		revive_btn.custom_minimum_size = Vector2(0, 100)
 		revive_btn.pressed.connect(func() -> void:
 			revive_btn.disabled = true
 			AdManager.show_rewarded("revive", func(completed: bool) -> void:
 				if completed:
+					_offer_taken = true
 					revive_game()
 				elif is_instance_valid(revive_btn):
 					revive_btn.disabled = false
@@ -1049,7 +1069,7 @@ func _trigger_game_over() -> void:
 	retry_btn.custom_minimum_size = Vector2(0, 80)
 	retry_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		AdManager.on_game_end_continue(func() -> void: _start_configured_level(true))
+		AdManager.on_game_end_continue(func() -> void: _start_configured_level(true), _declined_offer())
 	)
 	_modal_box.add_child(retry_btn)
 
@@ -1057,7 +1077,7 @@ func _trigger_game_over() -> void:
 	menu_btn.custom_minimum_size = Vector2(0, 50)
 	menu_btn.pressed.connect(func() -> void:
 		AudioManager.play_pickup()
-		AdManager.on_game_end_continue(func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+		AdManager.on_game_end_continue(func() -> void: get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"), _declined_offer())
 	)
 	_modal_box.add_child(menu_btn)
 
