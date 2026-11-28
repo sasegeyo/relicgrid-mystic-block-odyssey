@@ -96,7 +96,7 @@ func _load_font(path: String, weight: int) -> Font:
 		return null
 	var fv := FontVariation.new()
 	fv.base_font = base
-	fv.variation_opentype = {"wght": weight}
+	fv.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): weight}
 	return fv
 
 
